@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components  # 👈 애널리틱스용 필수 부품 추가
 import pandas as pd
 import math
 from datetime import datetime
@@ -16,6 +17,33 @@ except ImportError:
 st.set_page_config(page_title="데일리 툴박스", page_icon="🧰", layout="centered")
 
 
+# ==========================================
+# 🕵️‍♂️ 구글 애널리틱스 추적 코드 (심기!)
+# ==========================================
+def inject_ga():
+    # ▼▼▼ [수정] 여기에 아까 복사한 G-로 시작하는 ID를 넣으세요! ▼▼▼
+    GA_ID = "G-4460NPEL99"
+
+    # 실제 추적 스크립트 (건드리지 마세요)
+    ga_code = f"""
+    <script async src="https://www.googletagmanager.com/gtag/js?id={GA_ID}"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){{dataLayer.push(arguments);}}
+        gtag('js', new Date());
+        gtag('config', '{GA_ID}');
+    </script>
+    """
+    # 화면에는 안 보이고 뒤에서 몰래 실행되게 함 (height=0)
+    components.html(ga_code, height=0, width=0)
+
+
+# 앱이 켜지자마자 추적기 실행!
+inject_ga()
+
+
+# ==========================================
+
 # --- 캐싱 함수 ---
 @st.cache_data(ttl=3600)
 def get_exchange_rate():
@@ -28,7 +56,7 @@ def get_exchange_rate():
         return None
 
 
-# --- 사이드바: 설정 & 후원 & 연락처 ---
+# --- 사이드바 ---
 with st.sidebar:
     st.header("🌐 언어 설정 (Language)")
     lang = st.radio("Select Language", ["🇰🇷 한국어", "🇺🇸 English"])
@@ -54,28 +82,19 @@ with st.sidebar:
         unsafe_allow_html=True
     )
 
-    st.write("")  # 여백
+    st.write("")
 
-    # 2. PayPal 버튼 (텍스트 언어 연동)
-    # ▼▼▼ [수정] PM님의 페이팔 링크를 넣어주세요 (예: paypal.me/shban127) ▼▼▼
+    # 2. PayPal
+    # ▼▼▼ [수정] 페이팔 주소 확인! ▼▼▼
     paypal_url = "https://www.paypal.com/paypalme/SanghyunBan"
 
-    # 버튼 텍스트 설정 (한국어/영어 자동 변환)
     btn_text = "💳 PayPal로 후원하기" if is_kor else "💳 Donate with PayPal"
-
     st.markdown(
         f"""
         <a href="{paypal_url}" target="_blank">
             <button style="
-                background-color: #0070BA; 
-                color: white; 
-                border: none; 
-                padding: 10px; 
-                border-radius: 5px; 
-                font-weight: bold; 
-                cursor: pointer;
-                width: 100%;
-                font-family: sans-serif;">
+                background-color: #0070BA; color: white; border: none; padding: 10px; 
+                border-radius: 5px; font-weight: bold; cursor: pointer; width: 100%; font-family: sans-serif;">
                 {btn_text}
             </button>
         </a>
