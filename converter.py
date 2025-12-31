@@ -18,29 +18,31 @@ st.set_page_config(page_title="데일리 툴박스", page_icon="🧰", layout="c
 
 
 # ==========================================
-# 🕵️‍♂️ 구글 애널리틱스 추적 코드 (심기!)
+# 🕵️‍♂️ 구글 애널리틱스 추적 코드 (수정버전)
 # ==========================================
 def inject_ga():
-    # ▼▼▼ [수정] 여기에 아까 복사한 G-로 시작하는 ID를 넣으세요! ▼▼▼
-    GA_ID = "G-4460NPEL99"
+    GA_ID = "G-4460NPEL99"  # PM님 ID 확인 완료
 
-    # 실제 추적 스크립트 (건드리지 마세요)
+    # 설정 변경: iframe 안에서도 쿠키가 작동하도록 'cookie_flags' 추가
     ga_code = f"""
     <script async src="https://www.googletagmanager.com/gtag/js?id={GA_ID}"></script>
     <script>
         window.dataLayer = window.dataLayer || [];
         function gtag(){{dataLayer.push(arguments);}}
         gtag('js', new Date());
-        gtag('config', '{GA_ID}');
+        
+        // ⚠️ 중요: Streamlit Iframe 환경을 위한 쿠키 설정 추가
+        gtag('config', '{GA_ID}', {{
+            'cookie_flags': 'SameSite=None;Secure'
+        }});
     </script>
     """
-    # 화면에는 안 보이고 뒤에서 몰래 실행되게 함 (height=0)
-    components.html(ga_code, height=0, width=0)
+    
+    # height=0으로 두면 가끔 실행 안 될 때가 있어서 1px로 설정 후 숨김 처리
+    components.html(ga_code, height=1)
 
-
-# 앱이 켜지자마자 추적기 실행!
+# 앱 실행
 inject_ga()
-
 
 # ==========================================
 
