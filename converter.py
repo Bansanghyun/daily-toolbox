@@ -3,7 +3,7 @@ import streamlit.components.v1 as components
 import pandas as pd
 import math
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 
 # yfinance 안전 로딩
@@ -18,7 +18,7 @@ st.set_page_config(page_title="Daily Toolbox", page_icon="🧰", layout="centere
 
 
 # ==========================================
-# 🕵️‍♂️ GA Code (추적 코드 유지)
+# 🕵️‍♂️ GA Code
 # ==========================================
 def inject_ga():
     GA_ID = "G-4460NPEL99"
@@ -49,7 +49,7 @@ def get_exchange_rate():
         return None
 
 
-# --- 날씨 함수 (API) ---
+# --- 날씨 함수 ---
 def get_weather_data(location):
     try:
         url = f"https://wttr.in/{location}?format=j1"
@@ -61,7 +61,7 @@ def get_weather_data(location):
         return None, None, None, "Error"
 
 
-# --- 증발률 계산 (ACI 305R) ---
+# --- 증발률 계산 ---
 def calc_evaporation_rate(tc, rh, v_mph):
     tc_f = (tc * 9 / 5) + 32
     conc_f = tc_f
@@ -96,7 +96,6 @@ with st.sidebar:
         unsafe_allow_html=True)
     st.write("")
 
-    # ▼▼▼ PayPal 주소 ▼▼▼
     paypal_url = "https://www.paypal.com/paypalme/아이디를입력하세요"
     btn_text = "💳 PayPal로 후원하기" if is_kor else "💳 Donate with PayPal"
     st.markdown(
@@ -121,15 +120,13 @@ else:
 tabs = st.tabs(tab_names)
 
 # =================================================
-# TAB 1: ☀️ 스마트 양생 (UI 복구 + 언어 분리)
+# TAB 1: ☀️ 스마트 양생
 # =================================================
 with tabs[0]:
     if is_kor:
-        # [한국어 UI]
         st.markdown("### ☀️ 스마트 콘크리트 양생 관리")
-        st.caption("ACI 305R/306R 기반 분석. 지역명을 입력하면 날씨를 자동으로 가져옵니다.")
+        st.caption("지역명 입력 시 날씨 자동 연동 (ACI 305R/306R 기반)")
 
-        # 검색창 UI (V27 디자인)
         with st.container(border=True):
             col_search, col_btn = st.columns([3, 1])
             loc_input = col_search.text_input("위치 검색 (예: Atlanta, 30303)", placeholder="도시명 또는 ZIP Code")
@@ -138,231 +135,173 @@ with tabs[0]:
                     with st.spinner("날씨 정보를 불러오는 중..."):
                         t, h, w, err = get_weather_data(loc_input)
                         if err:
-                            st.error("위치를 찾을 수 없습니다. 철자를 확인해주세요.")
+                            st.error("위치를 찾을 수 없습니다.")
                         else:
                             st.session_state.temp_val = t
                             st.session_state.humid_val = int(h)
                             st.session_state.wind_val = w
                             st.success(f"✅ 로딩 완료: {loc_input}")
-
             st.divider()
-            # 입력창
             c1, c2, c3 = st.columns(3)
             temp_f = c1.number_input("기온 (Temp °F)", value=st.session_state.temp_val, step=1.0, format="%.1f")
             humid = c2.number_input("습도 (Humidity %)", value=st.session_state.humid_val, step=5, max_value=100)
             wind = c3.number_input("풍속 (Wind mph)", value=st.session_state.wind_val, step=1.0)
+            st.caption(f"🌡️ 변환 온도: {(temp_f - 32) * 5 / 9:.1f}°C")
 
-            temp_c = (temp_f - 32) * 5 / 9
-            st.caption(f"🌡️ 변환 온도: {temp_c:.1f}°C")
-
-        # 분석 및 결과 표시 (한국어)
-        evap_rate = calc_evaporation_rate(temp_c, humid, wind)
+        evap_rate = calc_evaporation_rate((temp_f - 32) * 5 / 9, humid, wind)
         st.markdown("#### 📊 분석 결과")
         col_r1, col_r2 = st.columns([1, 1])
-
         with col_r1:
             st.markdown("**1. 온도 기준**")
             if temp_f < 40:
-                st.error("❄️ **한중 콘크리트 (Cold Weather)**");
-                st.caption("🚨 40°F 미만! 보온 양생 필수")
+                st.error("❄️ **한중 콘크리트 (Cold)**"); st.caption("🚨 40°F 미만! 보온 필수")
             elif temp_f > 90:
-                st.error("🔥 **서중 콘크리트 (Hot Weather)**");
-                st.caption("🚨 90°F 초과! 쿨링 대책 필요")
+                st.error("🔥 **서중 콘크리트 (Hot)**"); st.caption("🚨 90°F 초과! 쿨링 필요")
             else:
-                st.success("✅ **적정 온도 (Good)**");
-                st.caption("표준 시방 범위 내 (40°F ~ 90°F)")
-
+                st.success("✅ **적정 온도 (Good)**"); st.caption("40°F ~ 90°F")
         with col_r2:
-            st.markdown("**2. 소성 수축 균열**")
-            st.metric("수분 증발률 (lb/ft²/hr)", f"{evap_rate:.3f}")
+            st.markdown("**2. 균열 위험도**")
+            st.metric("증발률 (lb/ft²/hr)", f"{evap_rate:.3f}")
             if evap_rate > 0.2:
-                st.error("🚨 **위험 (Critical)**");
-                st.caption("0.2 초과! 즉시 균열 발생 가능. 방풍막/포깅 필수.")
+                st.error("🚨 **위험 (Critical)**"); st.caption("즉시 균열 위험! 방풍막/포깅")
             elif evap_rate > 0.1:
-                st.warning("⚠️ **주의 (Caution)**");
-                st.caption("0.1 초과. 모니터링 강화.")
+                st.warning("⚠️ **주의 (Caution)**"); st.caption("모니터링 강화")
             else:
-                st.success("✅ **안전 (Safe)**");
-                st.caption("균열 위험 낮음.")
-
-        with st.expander("💡 소장님을 위한 팁 (Pro Tip)"):
-            st.markdown("* **Cold Weather:** 초기 동해 주의. 보온 덮개 필수.\n* **Evaporation:** 바람이 10mph만 넘어도 위험합니다.")
+                st.success("✅ **안전 (Safe)**")
 
     else:
-        # [ENGLISH UI] - Perfectly Translated
+        # English UI
         st.markdown("### ☀️ Concrete Curing Manager")
-        st.caption("Based on ACI 305R/306R. Enter location for auto-weather.")
+        st.caption("Auto-weather based on ACI 305R/306R Standards.")
 
-        # Search UI (English)
         with st.container(border=True):
             col_search, col_btn = st.columns([3, 1])
-            loc_input = col_search.text_input("Search Location (e.g., Atlanta, 30303)", placeholder="City or ZIP Code")
+            loc_input = col_search.text_input("Search Location (e.g., Atlanta, 30303)", placeholder="City or ZIP")
             if col_btn.button("🔍 Get Weather", use_container_width=True):
                 if loc_input:
                     with st.spinner("Fetching data..."):
                         t, h, w, err = get_weather_data(loc_input)
                         if err:
-                            st.error("Location not found. Check spelling.")
+                            st.error("Location not found.")
                         else:
                             st.session_state.temp_val = t
                             st.session_state.humid_val = int(h)
                             st.session_state.wind_val = w
                             st.success(f"✅ Loaded: {loc_input}")
-
             st.divider()
-            # Inputs
             c1, c2, c3 = st.columns(3)
             temp_f = c1.number_input("Temp (°F)", value=st.session_state.temp_val, step=1.0, format="%.1f")
             humid = c2.number_input("Humidity (%)", value=st.session_state.humid_val, step=5, max_value=100)
             wind = c3.number_input("Wind Speed (mph)", value=st.session_state.wind_val, step=1.0)
+            st.caption(f"🌡️ In Celsius: {(temp_f - 32) * 5 / 9:.1f}°C")
 
-            temp_c = (temp_f - 32) * 5 / 9
-            st.caption(f"🌡️ In Celsius: {temp_c:.1f}°C")
-
-        # Analysis Logic & Display (English)
-        evap_rate = calc_evaporation_rate(temp_c, humid, wind)
+        evap_rate = calc_evaporation_rate((temp_f - 32) * 5 / 9, humid, wind)
         st.markdown("#### 📊 Analysis Result")
         col_r1, col_r2 = st.columns([1, 1])
-
         with col_r1:
             st.markdown("**1. Temperature Check**")
             if temp_f < 40:
-                st.error("❄️ **Cold Weather Concrete**");
-                st.caption("🚨 Below 40°F! Thermal protection required.")
+                st.error("❄️ **Cold Weather**"); st.caption("🚨 Below 40°F! Protection required.")
             elif temp_f > 90:
-                st.error("🔥 **Hot Weather Concrete**");
-                st.caption("🚨 Above 90°F! Cooling measures required.")
+                st.error("🔥 **Hot Weather**"); st.caption("🚨 Above 90°F! Cooling required.")
             else:
-                st.success("✅ **Good Condition**");
-                st.caption("Within ACI standard range (40°F ~ 90°F).")
-
+                st.success("✅ **Good Condition**"); st.caption("Within 40°F ~ 90°F")
         with col_r2:
             st.markdown("**2. Cracking Risk**")
             st.metric("Evaporation Rate", f"{evap_rate:.3f}")
             if evap_rate > 0.2:
-                st.error("🚨 **CRITICAL**");
-                st.caption("Over 0.2! High risk. Windbreaks/Fogging required.")
+                st.error("🚨 **CRITICAL**"); st.caption("High risk! Use windbreaks/fogging.")
             elif evap_rate > 0.1:
-                st.warning("⚠️ **CAUTION**");
-                st.caption("Over 0.1. Monitor closely.")
+                st.warning("⚠️ **CAUTION**"); st.caption("Monitor closely.")
             else:
-                st.success("✅ **SAFE**");
-                st.caption("Low cracking risk.")
-
-        with st.expander("💡 Pro Tips"):
-            st.markdown(
-                "* **Cold Weather:** Freezing reduces strength by 50%. Use insulation.\n* **Wind:** Wind > 10mph drastically increases evaporation.")
+                st.success("✅ **SAFE**")
 
 # =================================================
-# TAB 2: 소통/영어 (언어 분리)
+# TAB 2: 소통
 # =================================================
 with tabs[1]:
     if is_kor:
-        comm_type = st.radio("기능 선택", ["📻 무전 용어", "📖 건설 약어", "📧 이메일 템플릿"], horizontal=True)
+        comm_type = st.radio("기능", ["📻 무전 용어", "📖 건설 약어", "📧 이메일 템플릿"], horizontal=True)
         st.divider()
         if "무전" in comm_type:
-            st.subheader("📻 필수 무전 용어")
-            st.table(pd.DataFrame([
-                {"용어": "10-4", "의미": "수신 양호"}, {"용어": "Copy that", "의미": "내용 이해함"},
-                {"용어": "What's your 20?", "의미": "현재 위치?"}, {"용어": "Go ahead", "의미": "말해라"},
-                {"용어": "Stand by", "의미": "대기하라"}
-            ]))
+            st.table(pd.DataFrame([{"용어": "10-4", "의미": "수신 양호"}, {"용어": "Copy that", "의미": "내용 이해함"},
+                                   {"용어": "What's your 20?", "의미": "현재 위치?"}, {"용어": "Go ahead", "의미": "말해라"}]))
         elif "약어" in comm_type:
-            st.subheader("📖 건설 현장 약어")
-            st.dataframe(pd.DataFrame([
-                {"약어": "RFI", "원어": "Request for Information", "설명": "설계 질의서"},
-                {"약어": "CO", "원어": "Change Order", "설명": "설계 변경"},
-                {"약어": "NTP", "원어": "Notice to Proceed", "설명": "착공 지시서"},
-                {"약어": "TBM", "원어": "Toolbox Meeting", "설명": "작업 전 안전 조회"}
-            ]), hide_index=True, use_container_width=True)
+            st.dataframe(pd.DataFrame([{"약어": "RFI", "원어": "Request for Information", "설명": "질의서"},
+                                       {"약어": "CO", "원어": "Change Order", "설명": "설계 변경"},
+                                       {"약어": "NTP", "원어": "Notice to Proceed", "설명": "착공 지시"}]), hide_index=True,
+                         use_container_width=True)
         elif "이메일" in comm_type:
-            st.subheader("📧 이메일 작성기")
-            type_ = st.selectbox("상황", ["자재 지연 (Delay)", "검측 요청 (Inspection)"])
-            item = st.text_input("대상 항목", "Piping")
-            if st.button("생성하기"):
-                if "Delay" in type_:
+            t = st.selectbox("상황", ["자재 지연", "검측 요청"])
+            i = st.text_input("항목", "Piping")
+            if st.button("생성"):
+                if "지연" in t:
                     st.info(
-                        f"Subject: Notice of Delay - {item}\n\nDear Manager,\nWe regret to inform you of a delay regarding **{item}**.")
+                        f"Subject: Delay Notice - {i}\n\nDear Manager,\nWe regret to inform you of a delay regarding **{i}**.")
                 else:
                     st.success(
-                        f"Subject: Inspection Request - {item}\n\nDear Manager,\nInstallation of **{item}** is complete.")
+                        f"Subject: Inspection Request - {i}\n\nDear Manager,\nInstallation of **{i}** is complete.")
     else:
-        # [ENGLISH UI]
-        comm_type = st.radio("Select Tool", ["📻 Radio Terms", "📖 Acronyms", "📧 Email Templates"], horizontal=True)
+        comm_type = st.radio("Tool", ["📻 Radio Terms", "📖 Acronyms", "📧 Email Templates"], horizontal=True)
         st.divider()
         if "Radio" in comm_type:
-            st.subheader("📻 Radio Terms")
-            st.table(pd.DataFrame([
-                {"Term": "10-4", "Meaning": "Received / OK"}, {"Term": "Copy that", "Meaning": "Understood"},
-                {"Term": "What's your 20?", "Meaning": "Current Location?"},
-                {"Term": "Go ahead", "Meaning": "Ready to listen"},
-                {"Term": "Stand by", "Meaning": "Wait"}
-            ]))
+            st.table(pd.DataFrame(
+                [{"Term": "10-4", "Meaning": "Received"}, {"Term": "Copy that", "Meaning": "Understood"},
+                 {"Term": "What's your 20?", "Meaning": "Location?"}, {"Term": "Go ahead", "Meaning": "Listening"}]))
         elif "Acronyms" in comm_type:
-            st.subheader("📖 Acronyms")
-            st.dataframe(pd.DataFrame([
-                {"Abbr": "RFI", "Full": "Request for Information"}, {"Abbr": "CO", "Full": "Change Order"},
-                {"Abbr": "NTP", "Full": "Notice to Proceed"}, {"Abbr": "TBM", "Full": "Toolbox Meeting"}
-            ]), hide_index=True, use_container_width=True)
+            st.dataframe(pd.DataFrame(
+                [{"Abbr": "RFI", "Full": "Request for Information"}, {"Abbr": "CO", "Full": "Change Order"},
+                 {"Abbr": "NTP", "Full": "Notice to Proceed"}]), hide_index=True, use_container_width=True)
         elif "Email" in comm_type:
-            st.subheader("📧 Email Generator")
-            type_ = st.selectbox("Situation", ["Delay Notice", "Inspection Request"])
-            item = st.text_input("Item / Subject", "Piping Material")
+            t = st.selectbox("Situation", ["Delay Notice", "Inspection Request"])
+            i = st.text_input("Item", "Piping")
             if st.button("Generate"):
-                if "Delay" in type_:
+                if "Delay" in t:
                     st.info(
-                        f"Subject: Notice of Delay - {item}\n\nDear Manager,\nWe regret to inform you of a delay regarding **{item}**.")
+                        f"Subject: Delay Notice - {i}\n\nDear Manager,\nWe regret to inform you of a delay regarding **{i}**.")
                 else:
                     st.success(
-                        f"Subject: Inspection Request - {item}\n\nDear Manager,\nInstallation of **{item}** is complete.")
+                        f"Subject: Inspection Request - {i}\n\nDear Manager,\nInstallation of **{i}** is complete.")
 
 # =================================================
-# TAB 3: 공학 계산 (언어 분리)
+# TAB 3: 공학 계산
 # =================================================
 with tabs[2]:
     if is_kor:
         eng_menu = st.radio("계산기", ["📉 배관 구배", "⚡ 트레이 채움률", "🏗️ 크레인 양중"], horizontal=True)
         st.divider()
         if "구배" in eng_menu:
-            st.subheader("📉 배관 구배 계산")
             c1, c2 = st.columns(2)
             l = c1.number_input("길이 (ft)", 50.0)
-            s = c2.select_slider("구배 (Slope)", ["1/8\"", "1/4\"", "1/2\"", "1\""])
-            val = {"1/8\"": 0.125, "1/4\"": 0.25, "1/2\"": 0.5, "1\"": 1.0}[s]
-            d = l * val
+            s = c2.select_slider("구배", ["1/8\"", "1/4\"", "1/2\"", "1\""])
+            d = l * {"1/8\"": 0.125, "1/4\"": 0.25, "1/2\"": 0.5, "1\"": 1.0}[s]
             st.info(f"⬇️ **높이 차이: {d:.2f} inch ({d * 25.4:.1f} mm)**")
         elif "트레이" in eng_menu:
-            st.subheader("⚡ 트레이 채움률")
             c1, c2, c3 = st.columns(3)
             w = c1.selectbox("폭 (Width)", [12, 18, 24, 30, 36])
             d = c2.selectbox("깊이 (Depth)", [4, 6])
             dia = c3.number_input("케이블 외경 (in)", 1.0)
             cnt = st.slider("가닥수", 1, 100, 20)
             r = ((math.pi * (dia / 2) ** 2) * cnt / (w * d)) * 100
-            st.metric("채움률 (최대 40%)", f"{r:.1f}%")
+            st.metric("채움률 (Limit 40%)", f"{r:.1f}%")
             if r > 40:
                 st.error("❌ 초과 (Overfilled)")
             else:
                 st.success("✅ 양호 (Pass)")
         elif "크레인" in eng_menu:
-            st.subheader("🏗️ 양중 모멘트")
             w = st.number_input("무게 (lbs)", 5000)
             r = st.number_input("반경 (ft)", 50)
             st.metric("부하 모멘트", f"{w * r:,.0f} lbs-ft")
     else:
-        # [ENGLISH UI]
-        eng_menu = st.radio("Select Tool", ["📉 Slope Calc", "⚡ Tray Fill", "🏗️ Crane Lift"], horizontal=True)
+        eng_menu = st.radio("Tool", ["📉 Slope Calc", "⚡ Tray Fill", "🏗️ Crane Lift"], horizontal=True)
         st.divider()
         if "Slope" in eng_menu:
-            st.subheader("📉 Slope Calculator")
             c1, c2 = st.columns(2)
             l = c1.number_input("Length (ft)", 50.0)
             s = c2.select_slider("Slope", ["1/8\"", "1/4\"", "1/2\"", "1\""])
-            val = {"1/8\"": 0.125, "1/4\"": 0.25, "1/2\"": 0.5, "1\"": 1.0}[s]
-            d = l * val
+            d = l * {"1/8\"": 0.125, "1/4\"": 0.25, "1/2\"": 0.5, "1\"": 1.0}[s]
             st.info(f"⬇️ **Drop: {d:.2f} inch ({d * 25.4:.1f} mm)**")
         elif "Tray" in eng_menu:
-            st.subheader("⚡ Tray Fill Ratio")
             c1, c2, c3 = st.columns(3)
             w = c1.selectbox("Width (in)", [12, 18, 24, 30, 36])
             d = c2.selectbox("Depth (in)", [4, 6])
@@ -375,30 +314,190 @@ with tabs[2]:
             else:
                 st.success("✅ Pass")
         elif "Crane" in eng_menu:
-            st.subheader("🏗️ Load Moment")
             w = st.number_input("Weight (lbs)", 5000)
             r = st.number_input("Radius (ft)", 50)
             st.metric("Load Moment", f"{w * r:,.0f} lbs-ft")
 
 # =================================================
-# TAB 4~9: 나머지 (공통 기능도 언어 분리 적용)
+# TAB 4: 생활/금융 (🔥 기능 완전 복구!)
 # =================================================
-with tabs[3]:  # 생활
-    st.subheader("💱 Exchange Rate" if not is_kor else "💱 실시간 환율")
-    df = get_exchange_rate()
-    rate = df['Close'].iloc[-1] if df is not None else 1450.0
-    c1, c2 = st.columns(2)
-    c1.metric("USD/KRW", f"{rate:.1f}")
-    usd = c2.number_input("USD ($)", 1000)
-    c2.caption(f"≒ {int(usd * rate):,} KRW")
+with tabs[3]:
+    if is_kor:
+        # [KOREAN MODE]
+        life_menu = st.radio("메뉴", ["💱 실시간 환율", "⏰ 한-미 시차", "💸 연봉 실수령액", "🍽️ 팁 & 더치페이", "🍕 피자 가성비"], horizontal=True)
+        st.divider()
 
-    st.divider()
-    st.subheader("⏰ Timezone" if not is_kor else "⏰ 현장 시차")
-    utc = datetime.now(pytz.utc)
-    c1, c2 = st.columns(2)
-    c1.info(f"🇺🇸 ET: **{utc.astimezone(pytz.timezone('US/Eastern')).strftime('%H:%M')}**")
-    c2.success(f"🇰🇷 KST: **{utc.astimezone(pytz.timezone('Asia/Seoul')).strftime('%H:%M')}**")
+        if "환율" in life_menu:
+            st.subheader("💱 원/달러 환율 (USD/KRW)")
+            df_rate = get_exchange_rate()
+            if df_rate is not None:
+                curr = df_rate['Close'].iloc[-1];
+                prev = df_rate['Close'].iloc[-2]
+                c1, c2 = st.columns([1, 2])
+                c1.metric("현재 환율", f"{curr:.2f} 원", f"{curr - prev:.2f} 원")
+                st.line_chart(df_rate['Close'])
+                rate = curr
+            else:
+                st.warning("⚠️ 인터넷 연결 실패. 수동 입력해주세요.")
+                rate = st.number_input("환율 직접 입력 (원)", 1450.0)
 
+            st.markdown("##### 💵 간편 환전")
+            c1, c2 = st.columns(2)
+            u_in = c1.number_input("달러 (USD)", 1000.0)
+            c2.metric("원화 (KRW)", f"{int(u_in * rate):,} 원")
+
+        elif "시차" in life_menu:
+            st.subheader("🌏 글로벌 시차 시뮬레이션")
+            tz_e = pytz.timezone('US/Eastern');
+            tz_w = pytz.timezone('US/Pacific');
+            tz_k = pytz.timezone('Asia/Seoul')
+            now = datetime.now(tz_e)
+
+            offset = st.slider("시간 조절 (Time Slider)", 0, 23, now.hour)
+            target = now.replace(hour=offset, minute=0, second=0)
+
+            c1, c2, c3 = st.columns(3)
+            c1.metric("미국 동부 (ET)", target.astimezone(tz_e).strftime('%I:%M %p'))
+            c2.metric("미국 서부 (PT)", target.astimezone(tz_w).strftime('%I:%M %p'))
+            c3.metric("한국 (KST)", target.astimezone(tz_k).strftime('%I:%M %p'))
+
+            kh = target.astimezone(tz_k).hour
+            if 22 <= kh or kh < 7:
+                st.error("💤 한국은 지금 자는 시간입니다.")
+            elif 9 <= kh < 18:
+                st.success("✅ 한국은 업무 시간입니다.")
+            else:
+                st.warning("🌙 한국은 퇴근 후입니다.")
+
+        elif "연봉" in life_menu:
+            st.subheader("💸 연봉 실수령액 (Net Salary)")
+            st.caption("싱글 기준, 연방세+FICA 포함 (주세 제외)")
+            s = st.number_input("연봉 (Gross Salary $)", 80000, step=1000)
+            tax = max(0, s - 14600) * (0.18 if s > 100000 else 0.12)  # 약식 계산
+            fica = s * 0.0765
+            net = s - tax - fica
+            c1, c2 = st.columns(2)
+            c1.metric("예상 세금 (Tax)", f"-${(tax + fica):,.0f}")
+            c2.metric("월 실수령액", f"${net / 12:,.0f}")
+            st.info(f"💰 **연간 실수령액: ${net:,.0f}**")
+
+        elif "팁" in life_menu:
+            st.subheader("🍽️ 팁 & 더치페이 계산기")
+            c1, c2 = st.columns(2)
+            bill = c1.number_input("음식값 ($)", 50.0)
+            tip_p = c2.select_slider("팁 비율 (%)", [15, 18, 20, 22, 25], value=18)
+            ppl = st.number_input("인원 수", 1, 10, 1)
+
+            total = bill * (1 + tip_p / 100)
+            per_person = total / ppl
+
+            col_res1, col_res2 = st.columns(2)
+            col_res1.metric("총 지불액", f"${total:.2f}")
+            col_res2.success(f"🙆‍♂️ 1인당: **${per_person:.2f}**")
+
+        elif "피자" in life_menu:
+            st.subheader("🍕 피자 가성비 (수학적 검증)")
+            c1, c2 = st.columns(2)
+            s1 = c1.number_input("작은 피자 (인치)", 12)
+            s2 = c2.number_input("큰 피자 (인치)", 18)
+
+            area1 = 2 * (math.pi * (s1 / 2) ** 2)  # 작은거 2판
+            area2 = 1 * (math.pi * (s2 / 2) ** 2)  # 큰거 1판
+
+            st.write(f"• {s1}인치 2판 넓이: {area1:.1f} sq in")
+            st.write(f"• {s2}인치 1판 넓이: {area2:.1f} sq in")
+
+            if area2 > area1:
+                st.success(f"📢 **{s2}인치 1판**이 더 큽니다! (이득)")
+            else:
+                st.warning(f"📢 **{s1}인치 2판**이 더 큽니다!")
+
+    else:
+        # [ENGLISH MODE]
+        life_menu = st.radio("Menu", ["💱 Exchange Rate", "⏰ Timezone", "💸 Net Salary", "🍽️ Tip Calc", "🍕 Pizza Math"],
+                             horizontal=True)
+        st.divider()
+
+        if "Exchange" in life_menu:
+            st.subheader("💱 USD/KRW Exchange Rate")
+            df_rate = get_exchange_rate()
+            if df_rate is not None:
+                curr = df_rate['Close'].iloc[-1]
+                st.metric("Current Rate", f"{curr:.2f} KRW")
+                st.line_chart(df_rate['Close'])
+                rate = curr
+            else:
+                st.warning("Offline mode.")
+                rate = st.number_input("Manual Rate", 1450.0)
+
+            st.markdown("##### 💵 Converter")
+            c1, c2 = st.columns(2)
+            u_in = c1.number_input("USD ($)", 1000.0)
+            c2.metric("KRW (won)", f"{int(u_in * rate):,}")
+
+        elif "Time" in life_menu:
+            st.subheader("🌏 Global Time Converter")
+            tz_e = pytz.timezone('US/Eastern');
+            tz_w = pytz.timezone('US/Pacific');
+            tz_k = pytz.timezone('Asia/Seoul')
+            now = datetime.now(tz_e)
+            offset = st.slider("Adjust Time (Hour)", 0, 23, now.hour)
+            target = now.replace(hour=offset, minute=0, second=0)
+
+            c1, c2, c3 = st.columns(3)
+            c1.metric("US East (ET)", target.astimezone(tz_e).strftime('%I:%M %p'))
+            c2.metric("US West (PT)", target.astimezone(tz_w).strftime('%I:%M %p'))
+            c3.metric("Korea (KST)", target.astimezone(tz_k).strftime('%I:%M %p'))
+
+            kh = target.astimezone(tz_k).hour
+            if 22 <= kh or kh < 7:
+                st.error("💤 Korea is sleeping.")
+            elif 9 <= kh < 18:
+                st.success("✅ Korea Business Hours.")
+            else:
+                st.warning("🌙 Korea After work.")
+
+        elif "Salary" in life_menu:
+            st.subheader("💸 Net Salary Calculator")
+            st.caption("Est. Federal + FICA (Single filer)")
+            s = st.number_input("Annual Gross Salary ($)", 80000, step=1000)
+            tax = max(0, s - 14600) * (0.18 if s > 100000 else 0.12)
+            fica = s * 0.0765
+            net = s - tax - fica
+            c1, c2 = st.columns(2)
+            c1.metric("Est. Tax", f"-${(tax + fica):,.0f}")
+            c2.metric("Monthly Net", f"${net / 12:,.0f}")
+            st.info(f"💰 **Yearly Net: ${net:,.0f}**")
+
+        elif "Tip" in life_menu:
+            st.subheader("🍽️ Tip & Split")
+            c1, c2 = st.columns(2)
+            bill = c1.number_input("Bill Amount ($)", 50.0)
+            tip_p = c2.select_slider("Tip %", [15, 18, 20, 22, 25], value=18)
+            ppl = st.number_input("People", 1, 10, 1)
+
+            total = bill * (1 + tip_p / 100)
+            per_person = total / ppl
+
+            col_res1, col_res2 = st.columns(2)
+            col_res1.metric("Total", f"${total:.2f}")
+            col_res2.success(f"🙆‍♂️ Per Person: **${per_person:.2f}**")
+
+        elif "Pizza" in life_menu:
+            st.subheader("🍕 Pizza Math")
+            c1, c2 = st.columns(2)
+            s1 = c1.number_input("Small (inch)", 12)
+            s2 = c2.number_input("Large (inch)", 18)
+            area1 = 2 * (math.pi * (s1 / 2) ** 2)
+            area2 = 1 * (math.pi * (s2 / 2) ** 2)
+            if area2 > area1:
+                st.success(f"📢 **One {s2}-inch** is bigger! (Better deal)")
+            else:
+                st.warning(f"📢 **Two {s1}-inch** are bigger!")
+
+# =================================================
+# TAB 5~9: 공통 기능 (언어 분리 유지)
+# =================================================
 with tabs[4]:  # 치수
     st.subheader("📏 Unit Conversion" if not is_kor else "📏 치수 변환")
     c1, c2 = st.columns(2)
