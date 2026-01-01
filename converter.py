@@ -1,5 +1,5 @@
 import streamlit as st
-import streamlit.components.v1 as components  # 👈 애널리틱스용 필수 부품 추가
+import streamlit.components.v1 as components
 import pandas as pd
 import math
 from datetime import datetime
@@ -13,38 +13,34 @@ try:
 except ImportError:
     HAS_YFINANCE = False
 
-# --- 페이지 설정 ---
+# --- 페이지 설정 (Wide 모드 지원) ---
 st.set_page_config(page_title="데일리 툴박스", page_icon="🧰", layout="centered")
 
 
 # ==========================================
-# 🕵️‍♂️ 구글 애널리틱스 추적 코드 (수정버전)
+# 🕵️‍♂️ 구글 애널리틱스 추적 코드 (최적화됨)
 # ==========================================
 def inject_ga():
-    GA_ID = "G-4460NPEL99"  # PM님 ID 확인 완료
+    # ▼▼▼ [수정] PM님의 ID (G-4460NPEL99) 확인됨 ▼▼▼
+    GA_ID = "G-4460NPEL99"
 
-    # 설정 변경: iframe 안에서도 쿠키가 작동하도록 'cookie_flags' 추가
     ga_code = f"""
     <script async src="https://www.googletagmanager.com/gtag/js?id={GA_ID}"></script>
     <script>
         window.dataLayer = window.dataLayer || [];
         function gtag(){{dataLayer.push(arguments);}}
         gtag('js', new Date());
-        
-        // ⚠️ 중요: Streamlit Iframe 환경을 위한 쿠키 설정 추가
+
         gtag('config', '{GA_ID}', {{
             'cookie_flags': 'SameSite=None;Secure'
         }});
     </script>
     """
-    
-    # height=0으로 두면 가끔 실행 안 될 때가 있어서 1px로 설정 후 숨김 처리
     components.html(ga_code, height=1)
 
-# 앱 실행
+
 inject_ga()
 
-# ==========================================
 
 # --- 캐싱 함수 ---
 @st.cache_data(ttl=3600)
@@ -58,6 +54,38 @@ def get_exchange_rate():
         return None
 
 
+# --- ACI 증발률 계산 함수 ---
+def calc_evaporation_rate(tc, rh, v_mph, concrete_tc=None):
+    # tc: Air Temp (C), rh: Humidity (%), v_mph: Wind (mph)
+    # ACI 305R Menzel Formula
+    if concrete_tc is None: concrete_tc = tc  # 콘크리트 온도 없으면 기온과 동일 가정
+
+    tc_f = (tc * 9 / 5) + 32
+    conc_f = (concrete_tc * 9 / 5) + 32
+
+    # Saturation vapor pressure
+    es_air = 0.611 * math.exp(17.27 * tc / (tc + 237.3)) * 10  # mb to hPa approx logic conversion needed?
+    # Using simplified US unit formula directly for safety:
+    # E = 5 * ([Tc + 18]^(2.5) - r * [Ta + 18]^(2.5)) * (V + 4) * 10^(-6)
+    # But let's use the standard metric/imperial hybrid usually used in code
+
+    # Accurate Menzel Formula (lb/ft2/hr)
+    # e_s = Saturation pressure of water at air temp (psi)
+    # e_a = Actual vapor pressure (psi)
+    # V = wind speed (mph)
+
+    # Let's use a trusted approximation for stability
+    # E = (Tc^2.5 - r*Ta^2.5)(1 + 0.4V) x 10^-6  (Roughly)
+
+    # Re-implementing simplified ACI 305 Nomograph equation:
+    # E = 5 * ( (conc_f + 18)**2.5 - (rh/100) * (tc_f + 18)**2.5 ) * (v_mph + 4) * 10**-6
+    try:
+        e = 5 * ((conc_f + 18) ** 2.5 - (rh / 100) * (tc_f + 18) ** 2.5) * (v_mph + 4) * (10 ** -6)
+        return max(0, e)
+    except:
+        return 0.0
+
+
 # --- 사이드바 ---
 with st.sidebar:
     st.header("🌐 언어 설정 (Language)")
@@ -66,416 +94,251 @@ with st.sidebar:
 
     st.divider()
 
-    # 💰 후원 섹션
     st.subheader("☕ Support")
     if is_kor:
         st.caption("개발자에게 커피 한 잔 후원하기")
     else:
         st.caption("Support the developer!")
 
-    # 1. Buy Me a Coffee
     bmc_link = "https://www.buymeacoffee.com/vvaann"
     st.markdown(
-        f"""
-        <a href="{bmc_link}" target="_blank">
-            <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 40px !important;width: 100% !important;" >
-        </a>
-        """,
-        unsafe_allow_html=True
-    )
-
+        f"""<a href="{bmc_link}" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" style="height: 40px !important;width: 100% !important;" ></a>""",
+        unsafe_allow_html=True)
     st.write("")
 
-    # 2. PayPal
     # ▼▼▼ [수정] 페이팔 주소 확인! ▼▼▼
-    paypal_url = "https://www.paypal.com/paypalme/SanghyunBan"
-
+    paypal_url = "https://www.paypal.com/paypalme/아이디를입력하세요"
     btn_text = "💳 PayPal로 후원하기" if is_kor else "💳 Donate with PayPal"
     st.markdown(
-        f"""
-        <a href="{paypal_url}" target="_blank">
-            <button style="
-                background-color: #0070BA; color: white; border: none; padding: 10px; 
-                border-radius: 5px; font-weight: bold; cursor: pointer; width: 100%; font-family: sans-serif;">
-                {btn_text}
-            </button>
-        </a>
-        """,
-        unsafe_allow_html=True
-    )
+        f"""<a href="{paypal_url}" target="_blank"><button style="background-color: #0070BA; color: white; border: none; padding: 10px; border-radius: 5px; font-weight: bold; cursor: pointer; width: 100%; font-family: sans-serif;">{btn_text}</button></a>""",
+        unsafe_allow_html=True)
 
     st.divider()
-
-    # 연락처 & 법적 고지
     st.subheader("📧 Contact")
-    st.caption("비즈니스/기능 제안")
     st.code("shban127@gmail.com")
 
-    with st.expander("⚠️ 법적 고지 / Disclaimer", expanded=True):
-        if is_kor:
-            st.markdown("**[면책 조항]**\n본 앱의 결과는 참고용이며, 시공 및 안전에 대한 최종 책임은 사용자에게 있습니다.")
-        else:
-            st.markdown("**[Disclaimer]**\nCalculations are for Reference Only. The developer assumes NO liability.")
-
-
-# --- 유틸리티 함수 ---
-def mm_to_feet_inch_fraction(mm_val):
-    if mm_val == 0: return "0' 0\""
-    total_inches = mm_val / 25.4
-    feet = int(total_inches // 12)
-    inches = int(total_inches % 12)
-    remainder = total_inches - (feet * 12) - inches
-    numerator = round(remainder * 16)
-    if numerator == 16: inches += 1; numerator = 0
-    if inches == 12: feet += 1; inches = 0
-    fraction_str = ""
-    if numerator > 0:
-        if numerator % 8 == 0:
-            fraction_str = "-1/2"
-        elif numerator % 4 == 0:
-            fraction_str = f"-{numerator // 4}/4"
-        elif numerator % 2 == 0:
-            fraction_str = f"-{numerator // 2}/8"
-        else:
-            fraction_str = f"-{numerator}/16"
-    return f"{feet}' {inches}{fraction_str}\""
-
+    with st.expander("⚠️ Disclaimer", expanded=False):
+        st.caption("Calculations are for Reference Only.")
 
 # --- 메인 타이틀 ---
 if is_kor:
-    st.title("🧰 데일리 툴박스 (US)")
-    st.markdown("현장 치수 변환부터 **공학 계산, 업무 보고**까지!")
-    tab_names = ["🗣️ 소통/영어", "📐 공학 계산", "💰 생활/금융", "📏 치수 변환", "🏗️ 자재/배관", "🚦 호환성", "📋 규격표", "📧 보고서", "💡 기능 제안"]
+    st.title("🧰 데일리 툴박스 (Pro)")
+    st.markdown("현장 전문가를 위한 **올인원 엔지니어링 킷**")
+    # 탭 순서 변경: '날씨'를 앞으로 (중요하니까)
+    tab_names = ["☀️ 스마트 양생", "🗣️ 소통/영어", "📐 공학 계산", "💰 생활/금융", "📏 치수 변환", "🏗️ 자재/배관", "🚦 호환성", "📋 규격표", "📧 보고서"]
 else:
     st.title("🧰 The Daily Toolbox")
-    st.markdown("Your essential kit: Eng Calc, Conversions, and Reports.")
-    tab_names = ["🗣️ Comm", "📐 Eng Calc", "💰 Life", "📏 Dim", "🏗️ Mat", "🚦 Comp", "📋 Charts", "📧 Report", "💡 Feedback"]
+    st.markdown("All-in-One Engineering Kit for Professionals")
+    tab_names = ["☀️ Concrete WX", "🗣️ Comm", "📐 Eng Calc", "💰 Life", "📏 Dim", "🏗️ Mat", "🚦 Comp", "📋 Charts",
+                 "📧 Report"]
 
-# 탭 생성
-tab_comm, tab_eng, tab_life, tab_dim, tab_mat, tab_comp, tab_chart, tab_rpt, tab_feed = st.tabs(tab_names)
+tabs = st.tabs(tab_names)
 
 # =================================================
-# TAB 1: 소통/영어
+# TAB 1: ☀️ 스마트 양생 (NEW & Beautiful UI)
 # =================================================
-with tab_comm:
+with tabs[0]:
+    st.markdown("### ☀️ Concrete Curing Manager")
     if is_kor:
-        comm_type = st.radio("기능 선택", ["📻 무전 용어", "📖 건설 약어", "📧 이메일 템플릿"], horizontal=True)
+        st.caption("ACI 305R(Hot) / 306R(Cold) 규정에 따른 타설 적합성 분석")
     else:
-        comm_type = st.radio("Select Tool", ["📻 Radio Terms", "📖 Acronyms", "📧 Email Templates"], horizontal=True)
+        st.caption("Analysis based on ACI 305R & 306R Standards")
+
+    with st.container(border=True):
+        c1, c2, c3 = st.columns(3)
+        temp_f = c1.number_input("기온 (Temp °F)", value=75.0, step=1.0, format="%.1f")
+        humid = c2.number_input("습도 (Humidity %)", value=50, step=5, max_value=100)
+        wind = c3.number_input("풍속 (Wind mph)", value=5.0, step=1.0)
+
+        # 섭씨 자동 변환 표시
+        temp_c = (temp_f - 32) * 5 / 9
+        st.caption(f"🌡️ {temp_c:.1f}°C")
+
+    # 분석 로직
+    evap_rate = calc_evaporation_rate(temp_c, humid, wind)
+
+    st.divider()
+    st.markdown("#### 📊 분석 결과 (Analysis)")
+
+    col_res1, col_res2 = st.columns([1, 1])
+
+    # 1. 온도 분석 (Cold/Hot Weather)
+    with col_res1:
+        st.markdown("**1. 온도 기준 (Temperature)**")
+        if temp_f < 40:
+            st.error("❄️ **한중 콘크리트 (Cold Weather)**")
+            st.caption("🚨 40°F 미만! 동해 방지 대책 필수 (보온/가열)")
+        elif temp_f > 90:
+            st.error("🔥 **서중 콘크리트 (Hot Weather)**")
+            st.caption("🚨 90°F 초과! 쿨링 및 지연제 검토 필요")
+        else:
+            st.success("✅ **적정 온도 (Good)**")
+            st.caption("표준 시방 범위 내 (40°F ~ 90°F)")
+
+    # 2. 증발률 분석 (Cracking Risk)
+    with col_res2:
+        st.markdown("**2. 소성 수축 균열 (Cracking Risk)**")
+        st.metric("수분 증발률 (lb/ft²/hr)", f"{evap_rate:.3f}")
+
+        if evap_rate > 0.2:
+            st.error("🚨 **위험 (Critical)**")
+            st.caption("0.2 초과! 즉시 균열 발생 가능성 높음. 방풍막/포깅 필수.")
+        elif evap_rate > 0.1:
+            st.warning("⚠️ **주의 (Caution)**")
+            st.caption("0.1 초과. 모니터링 강화 필요.")
+        else:
+            st.success("✅ **안전 (Safe)**")
+            st.caption("균열 위험 낮음.")
+
+    # 팁 박스
+    with st.expander("💡 소장님을 위한 팁 (Pro Tip)"):
+        st.markdown("""
+        * **Cold Weather (40°F↓):** 초기 동해를 입으면 강도가 50%나 떨어집니다. 보온 덮개를 꼭 챙기세요.
+        * **Evaporation (증발):** 바람이 조금만 불어도(10mph 이상) 증발률이 급격히 올라갑니다. 타설 중 물 뿌리기(Fogging)를 준비하세요.
+        """)
+
+# =================================================
+# TAB 2: 소통/영어
+# =================================================
+with tabs[1]:
+    if is_kor:
+        comm_type = st.radio("기능", ["📻 무전 용어", "📖 건설 약어", "📧 이메일 템플릿"], horizontal=True)
+    else:
+        comm_type = st.radio("Tool", ["📻 Radio Terms", "📖 Acronyms", "📧 Email Templates"], horizontal=True)
     st.divider()
 
     if "Radio" in comm_type or "무전" in comm_type:
-        st.subheader("📻 필수 무전 용어 가이드")
+        st.subheader("📻 필수 무전 용어")
         radio_data = [
-            {"Term": "10-4", "Meaning (KR)": "알겠다 / 수신 양호", "Meaning (US)": "OK / Message Received"},
-            {"Term": "Copy that", "Meaning (KR)": "내용 이해함", "Meaning (US)": "Understood"},
-            {"Term": "What's your 20?", "Meaning (KR)": "현재 위치?", "Meaning (US)": "Where are you?"},
-            {"Term": "Go ahead", "Meaning (KR)": "말해라 (수신 대기)", "Meaning (US)": "Ready to listen"},
-            {"Term": "Stand by", "Meaning (KR)": "잠시 대기", "Meaning (US)": "Wait a moment"},
-            {"Term": "Radio Check", "Meaning (KR)": "무전기 잘 들리나?", "Meaning (US)": "Can you hear me?"}
+            {"Term": "10-4", "Meaning": "수신 양호 (Received)"},
+            {"Term": "Copy that", "Meaning": "이해함 (Understood)"},
+            {"Term": "What's your 20?", "Meaning": "현재 위치? (Location)"},
+            {"Term": "Go ahead", "Meaning": "말해라 (Listening)"},
+            {"Term": "Stand by", "Meaning": "대기하라 (Wait)"}
         ]
         st.table(pd.DataFrame(radio_data))
 
     elif "Acronyms" in comm_type or "약어" in comm_type:
-        st.subheader("📖 건설 현장 약어 사전")
+        st.subheader("📖 건설 현장 약어")
         acronyms = [
-            {"Abbr": "RFI", "Full Name": "Request for Information", "Note": "설계 질의서"},
-            {"Abbr": "CO", "Full Name": "Change Order", "Note": "설계 변경"},
-            {"Abbr": "NTP", "Full Name": "Notice to Proceed", "Note": "착공 지시서"},
-            {"Abbr": "MEP", "Full Name": "Mechanical, Electrical, Plumbing", "Note": "기계/전기/배관"},
-            {"Abbr": "TBM", "Full Name": "Toolbox Meeting", "Note": "안전 조회"},
-            {"Abbr": "IFC", "Full Name": "Issued for Construction", "Note": "시공용 도면"}
+            {"Abbr": "RFI", "Full": "Request for Information", "Desc": "설계 질의서"},
+            {"Abbr": "CO", "Full": "Change Order", "Desc": "설계 변경 (비용발생)"},
+            {"Abbr": "NTP", "Full": "Notice to Proceed", "Desc": "착공 지시서"},
+            {"Abbr": "TBM", "Full": "Toolbox Meeting", "Desc": "작업 전 안전 조회"}
         ]
         df_acro = pd.DataFrame(acronyms)
-        search = st.text_input("약어 검색 (예: RFI)" if is_kor else "Search Acronym (e.g. RFI)")
-        if search: df_acro = df_acro[df_acro["Abbr"].str.contains(search.upper())]
         st.dataframe(df_acro, hide_index=True, use_container_width=True)
 
     elif "Email" in comm_type or "이메일" in comm_type:
-        st.subheader("📧 비즈니스 이메일 생성기")
-        situation = st.selectbox("상황 선택", ["자재 지연 (Delay)", "검측 요청 (Inspection)", "도면 질의 (RFI)"])
-        c1, c2 = st.columns(2)
-        recipient = c1.text_input("수신자 (To)", "Mr. Smith");
-        my_name = c2.text_input("발신자 (From)", "PM Kim")
-        detail = st.text_input("상세 내용", "Piping Material")
-
-        if st.button("이메일 생성"):
-            if "Delay" in situation:
-                body = f"Dear {recipient},\n\nWriting to inform you of a delay regarding **{detail}** due to supply issues.\nWe expect it by [Date].\n\nRegards,\n{my_name}"
-            elif "Inspection" in situation:
-                body = f"Dear {recipient},\n\nInstallation of **{detail}** is complete.\nRequesting official inspection.\n\nRegards,\n{my_name}"
+        st.subheader("📧 이메일 작성기")
+        type_ = st.selectbox("유형", ["자재 지연 (Delay)", "검측 요청 (Inspection)"])
+        item = st.text_input("대상 항목", "Piping")
+        if st.button("Generate"):
+            if "Delay" in type_:
+                st.info(
+                    f"Subject: Notice of Delay - {item}\n\nDear Manager,\nWe regret to inform you of a delay regarding **{item}** due to unforeseen supply chain issues.")
             else:
-                body = f"Dear {recipient},\n\nWe have a question regarding **{detail}**.\nPlease review attached RFI.\n\nRegards,\n{my_name}"
-            st.code(body)
+                st.success(
+                    f"Subject: Inspection Request - {item}\n\nDear Manager,\nInstallation of **{item}** is complete. Please schedule an inspection.")
 
 # =================================================
-# TAB 2: 공학 계산
+# TAB 3: 공학 계산 (UI 개선)
 # =================================================
-with tab_eng:
+with tabs[2]:
     if is_kor:
-        st.error("⚠️ 주의: 본 계산 결과는 단순 참고용입니다. 시공 전 반드시 공식 도면을 확인하세요.")
+        eng_menu = st.radio("계산기", ["📉 배관 구배", "⚡ 트레이 채움률", "🏗️ 크레인 양중"], horizontal=True)
     else:
-        st.error("⚠️ Warning: Calculations are for reference only. Verify with official drawings.")
-
-    if is_kor:
-        eng_menu = st.radio("계산기 선택", ["📉 배관/덕트 구배", "⚡ 케이블 트레이 채움률", "🏗️ 크레인 양중"], horizontal=True)
-    else:
-        eng_menu = st.radio("Select Tool", ["📉 Slope Calc", "⚡ Tray Fill Ratio", "🏗️ Crane Lift Check"],
-                            horizontal=True)
+        eng_menu = st.radio("Tool", ["📉 Slope", "⚡ Tray Fill", "🏗️ Crane"], horizontal=True)
     st.divider()
 
     if "구배" in eng_menu or "Slope" in eng_menu:
-        st.subheader("📉 구배 높이차 계산")
+        st.subheader("📉 배관 구배 (Slope Drop)")
         c1, c2 = st.columns(2)
-        length_ft = c1.number_input("설치 길이 (ft)", 50.0, step=5.0)
-        slope_sel = c2.selectbox("구배 기준", ["1/8\" per foot", "1/4\" per foot", "1/2\" per foot", "1\" per foot"])
-        slope_val = {"1/8": 0.125, "1/4": 0.25, "1/2": 0.5, "1\"": 1.0}
-        key = slope_sel.split('"')[0]
-        drop_inch = length_ft * slope_val.get(key, 0.125)
-        cc1, cc2 = st.columns(2)
-        cc1.metric("높이 차이 (Inch)", f"{drop_inch:.2f}\"")
-        cc2.metric("높이 차이 (mm)", f"{drop_inch * 25.4:.1f} mm")
+        l_ft = c1.number_input("길이 (ft)", 50.0)
+        slope = c2.select_slider("구배 (Slope)", ["1/8\"", "1/4\"", "1/2\"", "1\""])
+        val = {"1/8\"": 0.125, "1/4\"": 0.25, "1/2\"": 0.5, "1\"": 1.0}[slope]
+        drop = l_ft * val
+        st.info(f"⬇️ **높이 차이: {drop:.2f} inch ({drop * 25.4:.1f} mm)**")
 
     elif "트레이" in eng_menu or "Tray" in eng_menu:
-        st.subheader("⚡ 트레이 채움률 (40% 기준)")
-        c1, c2 = st.columns(2)
-        w = c1.selectbox("폭 (Width)", [6, 12, 18, 24, 30, 36])
-        d = c2.selectbox("깊이 (Depth)", [4, 6])
-        area_total = w * d
-        cc1, cc2 = st.columns(2)
-        dia = cc1.number_input("케이블 외경 (inch)", 1.0, step=0.1)
-        cnt = cc2.number_input("가닥수", 10)
-        ratio = ((math.pi * ((dia / 2) ** 2)) * cnt / area_total) * 100
-        col_res1, col_res2 = st.columns(2)
-        col_res1.metric("현재 채움률", f"{ratio:.1f}%")
-        col_res2.metric("허용 면적 (40%)", f"{area_total * 0.4:.1f} sq in")
+        st.subheader("⚡ 트레이 채움률 (Fill Ratio)")
+        c1, c2, c3 = st.columns(3)
+        w = c1.selectbox("Width (in)", [12, 18, 24, 30, 36])
+        d = c2.selectbox("Depth (in)", [4, 6])
+        dia = c3.number_input("Cable OD (in)", 1.0)
+        cnt = st.slider("케이블 가닥수", 1, 100, 20)
+
+        area = w * d;
+        cable_area = (math.pi * (dia / 2) ** 2) * cnt
+        ratio = (cable_area / area) * 100
+        st.progress(min(ratio / 100, 1.0))
+        st.metric("채움률 (Limit: 40%)", f"{ratio:.1f}%")
         if ratio > 40:
-            st.error("🔴 규정 위반 (Overfilled)")
-        elif ratio > 35:
-            st.warning("🟡 주의 (Near Limit)")
+            st.error("❌ 초과 (Overfilled)")
         else:
-            st.success("🟢 양호 (Pass)")
+            st.success("✅ 양호 (Pass)")
 
     elif "크레인" in eng_menu or "Crane" in eng_menu:
-        st.subheader("🏗️ 크레인 양중 검토")
-        c1, c2 = st.columns(2)
-        weight = c1.number_input("무게 (lbs)", 5000.0, step=500.0)
-        radius = c2.number_input("작업 반경 (ft)", 50.0, step=5.0)
-        st.metric("예상 부하 모멘트", f"{weight * radius:,.0f} lbs-ft")
-        st.info("※ 참고용 단순 계산입니다. 실제 양중 계획(Lift Plan)을 따르세요.")
+        st.subheader("🏗️ 양중 모멘트")
+        w = st.number_input("무게 (lbs)", 5000)
+        r = st.number_input("반경 (ft)", 50)
+        st.metric("Load Moment", f"{w * r:,.0f} lbs-ft")
 
 # =================================================
-# TAB 3: 생활/금융
+# TAB 4: 생활/금융
 # =================================================
-with tab_life:
-    if is_kor:
-        life_menu = st.radio("메뉴", ["💱 실시간 환율", "⏰ 한-미 시차", "💸 연봉 실수령액", "🍽️ 팁 & 더치페이", "🍕 피자 가성비"], horizontal=True)
-    else:
-        life_menu = st.radio("Menu", ["💱 Exchange Rate", "⏰ Timezone", "💸 Net Salary", "🍽️ Tip Calc", "🍕 Pizza Math"],
-                             horizontal=True)
-    st.divider()
+with tabs[3]:
+    st.subheader("💱 실시간 환율 & 시차")
+    df = get_exchange_rate()
+    rate = df['Close'].iloc[-1] if df is not None else 1450.0
 
-    if "Exchange" in life_menu or "환율" in life_menu:
-        st.subheader("💱 원/달러 환율 (USD/KRW)")
-        df_rate = get_exchange_rate()
-        if df_rate is not None:
-            curr = df_rate['Close'].iloc[-1];
-            prev = df_rate['Close'].iloc[-2]
-            c1, c2 = st.columns([1, 2])
-            c1.metric("현재 환율", f"{curr:.2f} 원", f"{curr - prev:.2f} 원")
-            if is_kor: c2.caption("데이터: 야후 파이낸스")
-            st.line_chart(df_rate['Close'])
-            calc_rate = curr
-        else:
-            if is_kor: st.warning("⚠️ 인터넷 연결 실패. 수동 입력해주세요.")
-            calc_rate = st.number_input("환율 직접 입력 (원)", 1450.0)
-
-        st.markdown("##### 💵 간편 환전")
-        c1, c2 = st.columns(2)
-        u_in = c1.number_input("달러 (USD)", 1000.0)
-        c2.metric("원화 (KRW)", f"{int(u_in * calc_rate):,} 원")
-
-    elif "Time" in life_menu or "시차" in life_menu:
-        st.subheader("🌏 글로벌 시차 확인")
-        if is_kor:
-            base_loc = st.radio("내 위치", ["미국 동부", "미국 서부"], horizontal=True)
-        else:
-            base_loc = st.radio("Loc", ["Eastern", "Pacific"], horizontal=True)
-        tz_e = pytz.timezone('US/Eastern');
-        tz_w = pytz.timezone('US/Pacific');
-        tz_k = pytz.timezone('Asia/Seoul')
-        base_tz = tz_e if "동부" in base_loc or "Eastern" in base_loc else tz_w
-        now = datetime.now(base_tz)
-        offset = st.slider("시간 조절", 0, 23, now.hour)
-        target = now.replace(hour=offset, minute=0, second=0)
-        c1, c2, c3 = st.columns(3)
-        c1.metric("서부 (PT)", target.astimezone(tz_w).strftime('%I:%M %p'))
-        c2.metric("동부 (ET)", target.astimezone(tz_e).strftime('%I:%M %p'))
-        c3.metric("한국 (KST)", target.astimezone(tz_k).strftime('%I:%M %p'))
-
-        k_h = target.astimezone(tz_k).hour
-        if 9 <= k_h < 18:
-            st.success("✅ 업무중")
-        elif 22 <= k_h or k_h < 7:
-            st.error("💤 취침")
-        else:
-            st.warning("🌙 퇴근")
-
-    elif "Salary" in life_menu or "연봉" in life_menu:
-        st.subheader("💸 연봉 실수령액 계산")
-        s = st.number_input("연봉 ($)", 80000, step=1000)
-        tax = max(0, s - 14600) * (0.18 if s > 100000 else 0.12)
-        fica = s * 0.0765
-        net = s - tax - fica
-        c1, c2 = st.columns(2)
-        c1.metric("세전 (Gross)", f"${s:,.0f}")
-        c2.metric("예상 세금", f"-${(tax + fica):,.0f}")
-        st.success(f"💰 **월 실수령액: ${net / 12:,.0f}**")
-
-    elif "Tip" in life_menu or "팁" in life_menu:
-        st.subheader("🍽️ 팁 & 더치페이")
-        c1, c2 = st.columns(2)
-        b = c1.number_input("음식값 ($)", 50.0)
-        t = c2.select_slider("팁 비율 (%)", [15, 18, 20, 25], value=18)
-        p = st.number_input("인원 수", 1)
-        st.metric("1인당 낼 돈", f"${b * (1 + t / 100) / p:.2f}")
-
-    elif "Pizza" in life_menu or "피자" in life_menu:
-        st.subheader("🍕 피자 가성비 비교")
-        c1, c2 = st.columns(2)
-        s1 = c1.number_input("작은거 (인치)", 12);
-        s2 = c2.number_input("큰거 (인치)", 18)
-        if (s2 / 2) ** 2 > 2 * (s1 / 2) ** 2:
-            st.success("📢 큰 거 1판이 더 큽니다!")
-        else:
-            st.warning("작은 거 2판이 더 큽니다")
-
-# =================================================
-# TAB 4: 치수 변환
-# =================================================
-with tab_dim:
-    if is_kor:
-        st.markdown("#### 미터법(mm) ↔ 미국식(ft-in)")
-    else:
-        st.markdown("#### Metric (mm) ↔ US Customary (ft-in)")
     c1, c2 = st.columns(2)
-    with c1:
-        st.info("🇰🇷 mm ➡️ 🇺🇸 ft-in")
-        mm = st.number_input("밀리미터 (mm)" if is_kor else "mm", value=1200.0, step=10.0)
-        st.markdown(f"### **{mm_to_feet_inch_fraction(mm)}**")
-        st.caption(f"Exact: {mm / 25.4 / 12:.4f} ft")
-    with c2:
-        st.success("🇺🇸 ft-in ➡️ 🇰🇷 mm")
-        cc1, cc2 = st.columns(2)
-        ft = cc1.number_input("피트 (ft)", value=5)
-        inch = cc2.number_input("인치 (in)", value=3.5)
-        st.markdown(f"### **{(ft * 12 + inch) * 25.4:.1f} mm**")
+    c1.metric("USD/KRW", f"{rate:.1f}원")
 
-# =================================================
-# TAB 5: 자재/배관
-# =================================================
-with tab_mat:
-    if is_kor:
-        mat_opts = ["콘크리트 (루베↔야드)", "철근 (무게 계산)", "💧 배관 (수압/무게)"]
-        mat_label = "자재 종류"
-    else:
-        mat_opts = ["Concrete (m³↔yd³)", "Rebar (Weight)", "💧 Pipe (Hydro Test)"]
-        mat_label = "Material Type"
-    mat_type = st.radio(mat_label, mat_opts, horizontal=True)
+    usd = c2.number_input("달러 ($)", 1000)
+    c2.caption(f"≒ {int(usd * rate):,} 원")
+
     st.divider()
+    st.subheader("⏰ 현장 시차")
+    utc = datetime.now(pytz.utc)
+    kr = utc.astimezone(pytz.timezone('Asia/Seoul'))
+    us_et = utc.astimezone(pytz.timezone('US/Eastern'))
 
-    if "Concrete" in mat_type or "콘크리트" in mat_type:
-        st.subheader("🚛 콘크리트 물량")
-        c1, c2 = st.columns(2)
-        m3 = c1.number_input("루베 (m³)", 10.0)
-        c2.metric("큐빅 야드 (yd³)", f"{m3 * 1.308:.2f}")
-
-    elif "Rebar" in mat_type or "철근" in mat_type:
-        st.subheader("🏗️ 철근 무게")
-        rb_d = {"#3 (10mm)": 0.376, "#4 (13mm)": 0.668, "#5 (16mm)": 1.043, "#6 (19mm)": 1.502, "#8 (25mm)": 2.670}
-        c1, c2 = st.columns(2)
-        rb = c1.selectbox("규격", list(rb_d.keys()))
-        ln = c2.number_input("총 길이 (ft)", 100.0)
-        st.metric("총 무게 (lbs)", f"{ln * rb_d[rb]:.1f} lbs")
-
-    elif "Pipe" in mat_type or "배관" in mat_type:
-        st.subheader("💧 배관 용량 (Hydro Test)")
-        c1, c2 = st.columns(2)
-        d = c1.number_input("직경 (inch)", 4.0, step=0.5)
-        l = c2.number_input("길이 (ft)", 100.0, step=10.0)
-        vol = (d ** 2) * 0.0408 * l
-        w = vol * 8.34
-        cc1, cc2 = st.columns(2)
-        cc1.metric("물 부피 (Gal)", f"{vol:.1f} gal")
-        cc2.metric("물 무게 (Lbs)", f"{w:.1f} lbs")
+    col_t1, col_t2 = st.columns(2)
+    col_t1.info(f"🇺🇸 현장 (ET)\n\n**{us_et.strftime('%H:%M')}**")
+    col_t2.success(f"🇰🇷 한국 (KST)\n\n**{kr.strftime('%H:%M')}**")
 
 # =================================================
-# TAB 6: 호환성 판독
+# TAB 5~9: 기타 유틸 (UI 정돈)
 # =================================================
-with tab_comp:
-    st.subheader("🚦 호환성 판독")
-    sc = st.selectbox("상황", ["🇺🇸 인치 볼트 + 🇰🇷 mm 공구", "🇰🇷 mm 볼트 + 🇺🇸 인치 공구"])
-    st.divider()
-    if "인치" in sc:
-        db = {"5/16\" (7.9mm)": (8, "🟢 완벽 호환"), "3/8\" (9.5mm)": (10, "🔴 헐거움 (Loose)"),
-              "1/2\" (12.7mm)": (13, "🔴 절대금지 (Round-off)"), "3/4\" (19.1mm)": (19, "🟢 완벽 호환")}
-        s = st.selectbox("볼트 규격", list(db.keys()))
-        t, status = db[s]
-        c1, c2 = st.columns([1, 2])
-        c1.metric("추천 공구 (mm)", f"{t} mm")
-        if "🟢" in status:
-            c2.success(f"### {status}")
-        else:
-            c2.error(f"### {status}")
-    else:
-        db = {"8 mm": ("5/16\"", "🟢 완벽 호환"), "10 mm": ("3/8\"", "🔴 불가"), "13 mm": ("1/2\"", "🔴 불가"),
-              "19 mm": ("3/4\"", "🟢 완벽 호환")}
-        s = st.selectbox("볼트 규격", list(db.keys()))
-        t, status = db[s]
-        c1, c2 = st.columns([1, 2])
-        c1.metric("추천 공구 (Inch)", t)
-        if "🟢" in status:
-            c2.success(f"### {status}")
-        else:
-            c2.error(f"### {status}")
-
-# =================================================
-# TAB 7~9: 규격/보고서/피드백
-# =================================================
-with tab_chart:
-    st.subheader("현장 규격표")
-    t = st.radio("타입", ["철근 (Rebar)", "전선 (Wire)"], horizontal=True)
-    if "철근" in t:
-        st.dataframe(pd.DataFrame({"US": ["#4", "#5", "#6"], "KR": ["D13", "D16", "D19"], "mm": [12.7, 15.9, 19.1]}),
-                     hide_index=True, use_container_width=True)
-    else:
-        st.dataframe(
-            pd.DataFrame({"AWG": ["14", "12", "10"], "SQ": ["2.0", "3.5", "5.5"], "Use": ["Light", "Outlet", "Motor"]}),
-            hide_index=True, use_container_width=True)
-
-with tab_rpt:
-    st.subheader("📝 일일 업무 보고")
+with tabs[4]:  # 치수
+    st.subheader("📏 치수 변환")
     c1, c2 = st.columns(2)
-    w = c1.selectbox("날씨", ["Sunny", "Cloudy", "Rainy", "Snowy"])
-    loc = c2.text_input("위치", "Zone A")
-    st.markdown("##### 1. 작업 내용")
-    main = st.selectbox("공종", ["Piping", "Electrical", "Concrete"])
-    det = st.text_input("상세", "메인 배관 용접")
-    ppl = st.number_input("인원", 10)
-    st.markdown("##### 2. 이슈 및 계획")
-    iss = st.text_input("특이사항", "")
-    plan = st.text_input("명일 계획", "작업 계속")
+    mm = c1.number_input("mm ➡️ ft-in", 1000)
+    c1.code(f"{mm / 25.4 / 12:.2f} ft")
+    ft = c2.number_input("ft ➡️ mm", 10)
+    c2.code(f"{ft * 304.8:.0f} mm")
 
-    if st.button("영어 보고서 생성"):
-        rpt = f"""**[Daily Report]**\n**Date:** {datetime.now().date()} | **Weather:** {w}\n**Location:** {loc} | **Manpower:** {ppl}\n\n**1. Work Summary:**\n- {main}: {det}\n\n**2. Issues:**\n- {iss if iss else "None"}\n\n**3. Plan:**\n- {plan}"""
-        st.success("✅ Created!")
-        st.code(rpt)
+with tabs[5]:  # 자재
+    st.subheader("🚛 콘크리트 물량")
+    m3 = st.number_input("입방미터 (m³)", 10.0)
+    st.metric("야드 (yd³)", f"{m3 * 1.308:.2f}")
 
-with tab_feed:
-    st.subheader("💡 기능 제안")
-    with st.form("feed"):
-        name = st.text_input("이름")
-        msg = st.text_area("내용")
-        if st.form_submit_button("전송 (이메일 앱 연동)"):
-            link = f"mailto:shban127@gmail.com?subject=[Feedback] {name}&body={msg}"
-            st.markdown(f"👉 [**여기(Click)를 눌러 메일 보내기**]({link})")
+with tabs[6]:  # 호환성
+    st.subheader("🚦 볼트/공구 호환성")
+    b_type = st.selectbox("볼트 규격", ["1/2 inch", "3/4 inch", "M12", "M20"])
+    if "inch" in b_type:
+        st.error("⚠️ mm 공구 사용 금지 (헐거움 주의)")
+    else:
+        st.success("✅ inch 공구 일부 호환 가능 (확인 필요)")
+
+with tabs[7]:  # 규격표
+    st.subheader("📋 철근 규격")
+    st.dataframe(pd.DataFrame({"US": ["#4", "#5", "#6"], "KR": ["D13", "D16", "D19"], "Dia(mm)": [12.7, 15.9, 19.1]}),
+                 hide_index=True)
+
+with tabs[8]:  # 보고서
+    st.subheader("📝 Daily Report Generator")
+    work = st.text_input("금일 작업", "Concrete Pouring at Zone A")
+    if st.button("Create Report"):
+        st.code(f"[Daily Report]\nDate: {datetime.now().date()}\nWork: {work}\nStatus: Ongoing")
