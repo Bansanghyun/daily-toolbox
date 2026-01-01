@@ -18,7 +18,7 @@ st.set_page_config(page_title="Daily Toolbox", page_icon="🧰", layout="centere
 
 
 # ==========================================
-# 🕵️‍♂️ GA Code
+# 🕵️‍♂️ GA Code (유지)
 # ==========================================
 def inject_ga():
     GA_ID = "G-4460NPEL99"
@@ -120,13 +120,12 @@ else:
 tabs = st.tabs(tab_names)
 
 # =================================================
-# TAB 1: ☀️ 스마트 양생
+# TAB 1: ☀️ 스마트 양생 (V30 유지)
 # =================================================
 with tabs[0]:
     if is_kor:
         st.markdown("### ☀️ 스마트 콘크리트 양생 관리")
         st.caption("지역명 입력 시 날씨 자동 연동 (ACI 305R/306R 기반)")
-
         with st.container(border=True):
             col_search, col_btn = st.columns([3, 1])
             loc_input = col_search.text_input("위치 검색 (예: Atlanta, 30303)", placeholder="도시명 또는 ZIP Code")
@@ -147,7 +146,6 @@ with tabs[0]:
             humid = c2.number_input("습도 (Humidity %)", value=st.session_state.humid_val, step=5, max_value=100)
             wind = c3.number_input("풍속 (Wind mph)", value=st.session_state.wind_val, step=1.0)
             st.caption(f"🌡️ 변환 온도: {(temp_f - 32) * 5 / 9:.1f}°C")
-
         evap_rate = calc_evaporation_rate((temp_f - 32) * 5 / 9, humid, wind)
         st.markdown("#### 📊 분석 결과")
         col_r1, col_r2 = st.columns([1, 1])
@@ -168,12 +166,9 @@ with tabs[0]:
                 st.warning("⚠️ **주의 (Caution)**"); st.caption("모니터링 강화")
             else:
                 st.success("✅ **안전 (Safe)**")
-
     else:
-        # English UI
         st.markdown("### ☀️ Concrete Curing Manager")
         st.caption("Auto-weather based on ACI 305R/306R Standards.")
-
         with st.container(border=True):
             col_search, col_btn = st.columns([3, 1])
             loc_input = col_search.text_input("Search Location (e.g., Atlanta, 30303)", placeholder="City or ZIP")
@@ -194,7 +189,6 @@ with tabs[0]:
             humid = c2.number_input("Humidity (%)", value=st.session_state.humid_val, step=5, max_value=100)
             wind = c3.number_input("Wind Speed (mph)", value=st.session_state.wind_val, step=1.0)
             st.caption(f"🌡️ In Celsius: {(temp_f - 32) * 5 / 9:.1f}°C")
-
         evap_rate = calc_evaporation_rate((temp_f - 32) * 5 / 9, humid, wind)
         st.markdown("#### 📊 Analysis Result")
         col_r1, col_r2 = st.columns([1, 1])
@@ -217,7 +211,7 @@ with tabs[0]:
                 st.success("✅ **SAFE**")
 
 # =================================================
-# TAB 2: 소통
+# TAB 2: 소통 (V30 유지)
 # =================================================
 with tabs[1]:
     if is_kor:
@@ -264,11 +258,12 @@ with tabs[1]:
                         f"Subject: Inspection Request - {i}\n\nDear Manager,\nInstallation of **{i}** is complete.")
 
 # =================================================
-# TAB 3: 공학 계산
+# TAB 3: 공학 계산 (🔥 볼트 토크 기능 추가됨)
 # =================================================
 with tabs[2]:
     if is_kor:
-        eng_menu = st.radio("계산기", ["📉 배관 구배", "⚡ 트레이 채움률", "🏗️ 크레인 양중"], horizontal=True)
+        # 🔧 '볼트 토크' 메뉴 추가
+        eng_menu = st.radio("계산기", ["📉 배관 구배", "⚡ 트레이 채움률", "🏗️ 크레인 양중", "🔧 볼트 토크"], horizontal=True)
         st.divider()
         if "구배" in eng_menu:
             c1, c2 = st.columns(2)
@@ -292,8 +287,26 @@ with tabs[2]:
             w = st.number_input("무게 (lbs)", 5000)
             r = st.number_input("반경 (ft)", 50)
             st.metric("부하 모멘트", f"{w * r:,.0f} lbs-ft")
+        elif "볼트" in eng_menu:
+            # 🔧 볼트 토크 로직 (한국어)
+            st.subheader("🔧 볼트 체결 토크 (AISC/RCSC)")
+            st.caption("고장력 볼트(High Strength Bolt) 권장 토크값")
+            c1, c2 = st.columns(2)
+            b_size = c1.selectbox("볼트 직경 (Inch)", ["1/2", "5/8", "3/4", "7/8", "1"])
+            b_grade = c2.selectbox("등급 (Grade)", ["A325", "A490"])
+
+            # 토크 데이터 (ft-lbs) - 일반적인 현장 참조값
+            torque_db = {
+                "A325": {"1/2": 90, "5/8": 180, "3/4": 320, "7/8": 500, "1": 750},
+                "A490": {"1/2": 110, "5/8": 220, "3/4": 390, "7/8": 600, "1": 900}
+            }
+            res = torque_db[b_grade][b_size]
+            st.success(f"🎯 **권장 토크: {res} ft-lbs**")
+            st.caption("※ 현장 상황/윤활 여부에 따라 달라질 수 있음.")
+
     else:
-        eng_menu = st.radio("Tool", ["📉 Slope Calc", "⚡ Tray Fill", "🏗️ Crane Lift"], horizontal=True)
+        # 🔧 Added 'Bolt Torque'
+        eng_menu = st.radio("Tool", ["📉 Slope Calc", "⚡ Tray Fill", "🏗️ Crane Lift", "🔧 Bolt Torque"], horizontal=True)
         st.divider()
         if "Slope" in eng_menu:
             c1, c2 = st.columns(2)
@@ -317,14 +330,28 @@ with tabs[2]:
             w = st.number_input("Weight (lbs)", 5000)
             r = st.number_input("Radius (ft)", 50)
             st.metric("Load Moment", f"{w * r:,.0f} lbs-ft")
+        elif "Bolt" in eng_menu:
+            # 🔧 Bolt Torque Logic (English)
+            st.subheader("🔧 Bolt Tightening Torque")
+            st.caption("Based on AISC/RCSC Standards")
+            c1, c2 = st.columns(2)
+            b_size = c1.selectbox("Diameter (Inch)", ["1/2", "5/8", "3/4", "7/8", "1"])
+            b_grade = c2.selectbox("Grade", ["A325", "A490"])
+
+            torque_db = {
+                "A325": {"1/2": 90, "5/8": 180, "3/4": 320, "7/8": 500, "1": 750},
+                "A490": {"1/2": 110, "5/8": 220, "3/4": 390, "7/8": 600, "1": 900}
+            }
+            res = torque_db[b_grade][b_size]
+            st.success(f"🎯 **Target Torque: {res} ft-lbs**")
 
 # =================================================
-# TAB 4: 생활/금융 (🔥 기능 완전 복구!)
+# TAB 4: 생활/금융 (🔥 야근 비용 기능 추가됨)
 # =================================================
 with tabs[3]:
     if is_kor:
-        # [KOREAN MODE]
-        life_menu = st.radio("메뉴", ["💱 실시간 환율", "⏰ 한-미 시차", "💸 연봉 실수령액", "🍽️ 팁 & 더치페이", "🍕 피자 가성비"], horizontal=True)
+        # 💰 '야근 비용' 메뉴 추가
+        life_menu = st.radio("메뉴", ["💱 실시간 환율", "⏰ 한-미 시차", "💸 연봉 실수령액", "💰 야근 비용", "🍽️ 팁/더치페이"], horizontal=True)
         st.divider()
 
         if "환율" in life_menu:
@@ -340,8 +367,6 @@ with tabs[3]:
             else:
                 st.warning("⚠️ 인터넷 연결 실패. 수동 입력해주세요.")
                 rate = st.number_input("환율 직접 입력 (원)", 1450.0)
-
-            st.markdown("##### 💵 간편 환전")
             c1, c2 = st.columns(2)
             u_in = c1.number_input("달러 (USD)", 1000.0)
             c2.metric("원화 (KRW)", f"{int(u_in * rate):,} 원")
@@ -352,15 +377,12 @@ with tabs[3]:
             tz_w = pytz.timezone('US/Pacific');
             tz_k = pytz.timezone('Asia/Seoul')
             now = datetime.now(tz_e)
-
             offset = st.slider("시간 조절 (Time Slider)", 0, 23, now.hour)
             target = now.replace(hour=offset, minute=0, second=0)
-
             c1, c2, c3 = st.columns(3)
             c1.metric("미국 동부 (ET)", target.astimezone(tz_e).strftime('%I:%M %p'))
             c2.metric("미국 서부 (PT)", target.astimezone(tz_w).strftime('%I:%M %p'))
             c3.metric("한국 (KST)", target.astimezone(tz_k).strftime('%I:%M %p'))
-
             kh = target.astimezone(tz_k).hour
             if 22 <= kh or kh < 7:
                 st.error("💤 한국은 지금 자는 시간입니다.")
@@ -371,15 +393,33 @@ with tabs[3]:
 
         elif "연봉" in life_menu:
             st.subheader("💸 연봉 실수령액 (Net Salary)")
-            st.caption("싱글 기준, 연방세+FICA 포함 (주세 제외)")
             s = st.number_input("연봉 (Gross Salary $)", 80000, step=1000)
-            tax = max(0, s - 14600) * (0.18 if s > 100000 else 0.12)  # 약식 계산
+            tax = max(0, s - 14600) * (0.18 if s > 100000 else 0.12)
             fica = s * 0.0765
             net = s - tax - fica
             c1, c2 = st.columns(2)
             c1.metric("예상 세금 (Tax)", f"-${(tax + fica):,.0f}")
             c2.metric("월 실수령액", f"${net / 12:,.0f}")
-            st.info(f"💰 **연간 실수령액: ${net:,.0f}**")
+
+        elif "야근" in life_menu:
+            # 💰 야근 비용 계산 로직 (한국어)
+            st.subheader("💰 야근/특근 비용 계산기")
+            st.caption("추가 작업(Overtime) 발생 시 예상 비용")
+
+            c1, c2 = st.columns(2)
+            ppl = c1.number_input("투입 인원 (명)", 1, 50, 5)
+            rate = c2.number_input("평균 시급 ($)", 25.0, 100.0, 40.0)
+
+            c3, c4 = st.columns(2)
+            hours = c3.number_input("추가 시간 (Hours)", 1.0, 24.0, 2.0)
+            mul = c4.radio("할증 비율", ["1.5배 (평일OT)", "2.0배 (휴일/심야)"], horizontal=True)
+
+            m_val = 1.5 if "1.5" in mul else 2.0
+            total_cost = ppl * rate * hours * m_val
+
+            st.divider()
+            st.metric("💸 총 예상 비용", f"${total_cost:,.0f}")
+            st.info(f"계산식: {ppl}명 x ${rate} x {hours}시간 x {m_val}배")
 
         elif "팁" in life_menu:
             st.subheader("🍽️ 팁 & 더치페이 계산기")
@@ -387,34 +427,16 @@ with tabs[3]:
             bill = c1.number_input("음식값 ($)", 50.0)
             tip_p = c2.select_slider("팁 비율 (%)", [15, 18, 20, 22, 25], value=18)
             ppl = st.number_input("인원 수", 1, 10, 1)
-
             total = bill * (1 + tip_p / 100)
             per_person = total / ppl
-
             col_res1, col_res2 = st.columns(2)
             col_res1.metric("총 지불액", f"${total:.2f}")
             col_res2.success(f"🙆‍♂️ 1인당: **${per_person:.2f}**")
 
-        elif "피자" in life_menu:
-            st.subheader("🍕 피자 가성비 (수학적 검증)")
-            c1, c2 = st.columns(2)
-            s1 = c1.number_input("작은 피자 (인치)", 12)
-            s2 = c2.number_input("큰 피자 (인치)", 18)
-
-            area1 = 2 * (math.pi * (s1 / 2) ** 2)  # 작은거 2판
-            area2 = 1 * (math.pi * (s2 / 2) ** 2)  # 큰거 1판
-
-            st.write(f"• {s1}인치 2판 넓이: {area1:.1f} sq in")
-            st.write(f"• {s2}인치 1판 넓이: {area2:.1f} sq in")
-
-            if area2 > area1:
-                st.success(f"📢 **{s2}인치 1판**이 더 큽니다! (이득)")
-            else:
-                st.warning(f"📢 **{s1}인치 2판**이 더 큽니다!")
-
     else:
         # [ENGLISH MODE]
-        life_menu = st.radio("Menu", ["💱 Exchange Rate", "⏰ Timezone", "💸 Net Salary", "🍽️ Tip Calc", "🍕 Pizza Math"],
+        # 💰 Added 'OT Cost'
+        life_menu = st.radio("Menu", ["💱 Exchange Rate", "⏰ Timezone", "💸 Net Salary", "💰 OT Cost", "🍽️ Tip Calc"],
                              horizontal=True)
         st.divider()
 
@@ -429,8 +451,6 @@ with tabs[3]:
             else:
                 st.warning("Offline mode.")
                 rate = st.number_input("Manual Rate", 1450.0)
-
-            st.markdown("##### 💵 Converter")
             c1, c2 = st.columns(2)
             u_in = c1.number_input("USD ($)", 1000.0)
             c2.metric("KRW (won)", f"{int(u_in * rate):,}")
@@ -443,12 +463,10 @@ with tabs[3]:
             now = datetime.now(tz_e)
             offset = st.slider("Adjust Time (Hour)", 0, 23, now.hour)
             target = now.replace(hour=offset, minute=0, second=0)
-
             c1, c2, c3 = st.columns(3)
             c1.metric("US East (ET)", target.astimezone(tz_e).strftime('%I:%M %p'))
             c2.metric("US West (PT)", target.astimezone(tz_w).strftime('%I:%M %p'))
             c3.metric("Korea (KST)", target.astimezone(tz_k).strftime('%I:%M %p'))
-
             kh = target.astimezone(tz_k).hour
             if 22 <= kh or kh < 7:
                 st.error("💤 Korea is sleeping.")
@@ -459,7 +477,6 @@ with tabs[3]:
 
         elif "Salary" in life_menu:
             st.subheader("💸 Net Salary Calculator")
-            st.caption("Est. Federal + FICA (Single filer)")
             s = st.number_input("Annual Gross Salary ($)", 80000, step=1000)
             tax = max(0, s - 14600) * (0.18 if s > 100000 else 0.12)
             fica = s * 0.0765
@@ -467,7 +484,26 @@ with tabs[3]:
             c1, c2 = st.columns(2)
             c1.metric("Est. Tax", f"-${(tax + fica):,.0f}")
             c2.metric("Monthly Net", f"${net / 12:,.0f}")
-            st.info(f"💰 **Yearly Net: ${net:,.0f}**")
+
+        elif "OT" in life_menu:
+            # 💰 OT Cost Logic (English)
+            st.subheader("💰 Overtime Cost Estimator")
+            st.caption("Calculate extra labor cost for overtime work.")
+
+            c1, c2 = st.columns(2)
+            ppl = c1.number_input("Manpower", 1, 50, 5)
+            rate = c2.number_input("Avg Hourly Rate ($)", 25.0, 100.0, 40.0)
+
+            c3, c4 = st.columns(2)
+            hours = c3.number_input("OT Hours", 1.0, 24.0, 2.0)
+            mul = c4.radio("Multiplier", ["1.5x (Regular OT)", "2.0x (Holiday/Sunday)"], horizontal=True)
+
+            m_val = 1.5 if "1.5" in mul else 2.0
+            total_cost = ppl * rate * hours * m_val
+
+            st.divider()
+            st.metric("💸 Estimated Cost", f"${total_cost:,.0f}")
+            st.info(f"Formula: {ppl} men x ${rate} x {hours} hrs x {m_val}")
 
         elif "Tip" in life_menu:
             st.subheader("🍽️ Tip & Split")
@@ -475,28 +511,14 @@ with tabs[3]:
             bill = c1.number_input("Bill Amount ($)", 50.0)
             tip_p = c2.select_slider("Tip %", [15, 18, 20, 22, 25], value=18)
             ppl = st.number_input("People", 1, 10, 1)
-
             total = bill * (1 + tip_p / 100)
             per_person = total / ppl
-
             col_res1, col_res2 = st.columns(2)
             col_res1.metric("Total", f"${total:.2f}")
             col_res2.success(f"🙆‍♂️ Per Person: **${per_person:.2f}**")
 
-        elif "Pizza" in life_menu:
-            st.subheader("🍕 Pizza Math")
-            c1, c2 = st.columns(2)
-            s1 = c1.number_input("Small (inch)", 12)
-            s2 = c2.number_input("Large (inch)", 18)
-            area1 = 2 * (math.pi * (s1 / 2) ** 2)
-            area2 = 1 * (math.pi * (s2 / 2) ** 2)
-            if area2 > area1:
-                st.success(f"📢 **One {s2}-inch** is bigger! (Better deal)")
-            else:
-                st.warning(f"📢 **Two {s1}-inch** are bigger!")
-
 # =================================================
-# TAB 5~9: 공통 기능 (언어 분리 유지)
+# TAB 5~9: 공통 기능 (V30 유지)
 # =================================================
 with tabs[4]:  # 치수
     st.subheader("📏 Unit Conversion" if not is_kor else "📏 치수 변환")
