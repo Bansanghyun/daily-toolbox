@@ -2,6 +2,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 import pandas as pd
 import math
+import requests  # 👈 날씨 가져오는 도구
 from datetime import datetime
 import pytz
 
@@ -13,27 +14,21 @@ try:
 except ImportError:
     HAS_YFINANCE = False
 
-# --- 페이지 설정 (Wide 모드 지원) ---
 st.set_page_config(page_title="데일리 툴박스", page_icon="🧰", layout="centered")
 
 
 # ==========================================
-# 🕵️‍♂️ 구글 애널리틱스 추적 코드 (최적화됨)
+# 🕵️‍♂️ 구글 애널리틱스 (V26 동일)
 # ==========================================
 def inject_ga():
-    # ▼▼▼ [수정] PM님의 ID (G-4460NPEL99) 확인됨 ▼▼▼
     GA_ID = "G-4460NPEL99"
-
     ga_code = f"""
     <script async src="https://www.googletagmanager.com/gtag/js?id={GA_ID}"></script>
     <script>
         window.dataLayer = window.dataLayer || [];
         function gtag(){{dataLayer.push(arguments);}}
         gtag('js', new Date());
-
-        gtag('config', '{GA_ID}', {{
-            'cookie_flags': 'SameSite=None;Secure'
-        }});
+        gtag('config', '{GA_ID}', {{ 'cookie_flags': 'SameSite=None;Secure' }});
     </script>
     """
     components.html(ga_code, height=1)
@@ -54,31 +49,28 @@ def get_exchange_rate():
         return None
 
 
+# --- 🌤️ 날씨 가져오기 함수 (wttr.in 사용) ---
+def get_weather_data(location):
+    try:
+        # wttr.in은 무료 날씨 API입니다 (JSON 포맷)
+        url = f"https://wttr.in/{location}?format=j1"
+        response = requests.get(url, timeout=5)
+        data = response.json()
+
+        current = data['current_condition'][0]
+        temp_f = float(current['temp_F'])
+        humid = float(current['humidity'])
+        wind_mph = float(current['windspeedMiles'])
+
+        return temp_f, humid, wind_mph, None  # None은 에러 없음
+    except Exception as e:
+        return None, None, None, "위치를 찾을 수 없습니다. 철자를 확인해주세요."
+
+
 # --- ACI 증발률 계산 함수 ---
-def calc_evaporation_rate(tc, rh, v_mph, concrete_tc=None):
-    # tc: Air Temp (C), rh: Humidity (%), v_mph: Wind (mph)
-    # ACI 305R Menzel Formula
-    if concrete_tc is None: concrete_tc = tc  # 콘크리트 온도 없으면 기온과 동일 가정
-
+def calc_evaporation_rate(tc, rh, v_mph):
     tc_f = (tc * 9 / 5) + 32
-    conc_f = (concrete_tc * 9 / 5) + 32
-
-    # Saturation vapor pressure
-    es_air = 0.611 * math.exp(17.27 * tc / (tc + 237.3)) * 10  # mb to hPa approx logic conversion needed?
-    # Using simplified US unit formula directly for safety:
-    # E = 5 * ([Tc + 18]^(2.5) - r * [Ta + 18]^(2.5)) * (V + 4) * 10^(-6)
-    # But let's use the standard metric/imperial hybrid usually used in code
-
-    # Accurate Menzel Formula (lb/ft2/hr)
-    # e_s = Saturation pressure of water at air temp (psi)
-    # e_a = Actual vapor pressure (psi)
-    # V = wind speed (mph)
-
-    # Let's use a trusted approximation for stability
-    # E = (Tc^2.5 - r*Ta^2.5)(1 + 0.4V) x 10^-6  (Roughly)
-
-    # Re-implementing simplified ACI 305 Nomograph equation:
-    # E = 5 * ( (conc_f + 18)**2.5 - (rh/100) * (tc_f + 18)**2.5 ) * (v_mph + 4) * 10**-6
+    conc_f = tc_f  # 콘크리트 온도 가정
     try:
         e = 5 * ((conc_f + 18) ** 2.5 - (rh / 100) * (tc_f + 18) ** 2.5) * (v_mph + 4) * (10 ** -6)
         return max(0, e)
@@ -86,45 +78,35 @@ def calc_evaporation_rate(tc, rh, v_mph, concrete_tc=None):
         return 0.0
 
 
+# --- 세션 상태 초기화 (날씨 자동 입력을 위해 필요) ---
+if 'temp_val' not in st.session_state: st.session_state.temp_val = 75.0
+if 'humid_val' not in st.session_state: st.session_state.humid_val = 50
+if 'wind_val' not in st.session_state: st.session_state.wind_val = 5.0
+
 # --- 사이드바 ---
 with st.sidebar:
-    st.header("🌐 언어 설정 (Language)")
-    lang = st.radio("Select Language", ["🇰🇷 한국어", "🇺🇸 English"])
+    st.header("🌐 언어 설정")
+    lang = st.radio("Language", ["🇰🇷 한국어", "🇺🇸 English"])
     is_kor = lang == "🇰🇷 한국어"
-
     st.divider()
-
     st.subheader("☕ Support")
-    if is_kor:
-        st.caption("개발자에게 커피 한 잔 후원하기")
-    else:
-        st.caption("Support the developer!")
-
     bmc_link = "https://www.buymeacoffee.com/vvaann"
     st.markdown(
-        f"""<a href="{bmc_link}" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" style="height: 40px !important;width: 100% !important;" ></a>""",
+        f"""<a href="{bmc_link}" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" style="width: 100% !important;"></a>""",
         unsafe_allow_html=True)
     st.write("")
-
-    # ▼▼▼ [수정] 페이팔 주소 확인! ▼▼▼
     paypal_url = "https://www.paypal.com/paypalme/아이디를입력하세요"
     btn_text = "💳 PayPal로 후원하기" if is_kor else "💳 Donate with PayPal"
     st.markdown(
-        f"""<a href="{paypal_url}" target="_blank"><button style="background-color: #0070BA; color: white; border: none; padding: 10px; border-radius: 5px; font-weight: bold; cursor: pointer; width: 100%; font-family: sans-serif;">{btn_text}</button></a>""",
+        f"""<a href="{paypal_url}" target="_blank"><button style="background-color: #0070BA; color: white; border: none; padding: 10px; border-radius: 5px; width: 100%; font-weight: bold; cursor: pointer;">{btn_text}</button></a>""",
         unsafe_allow_html=True)
-
     st.divider()
-    st.subheader("📧 Contact")
     st.code("shban127@gmail.com")
-
-    with st.expander("⚠️ Disclaimer", expanded=False):
-        st.caption("Calculations are for Reference Only.")
 
 # --- 메인 타이틀 ---
 if is_kor:
     st.title("🧰 데일리 툴박스 (Pro)")
     st.markdown("현장 전문가를 위한 **올인원 엔지니어링 킷**")
-    # 탭 순서 변경: '날씨'를 앞으로 (중요하니까)
     tab_names = ["☀️ 스마트 양생", "🗣️ 소통/영어", "📐 공학 계산", "💰 생활/금융", "📏 치수 변환", "🏗️ 자재/배관", "🚦 호환성", "📋 규격표", "📧 보고서"]
 else:
     st.title("🧰 The Daily Toolbox")
@@ -135,71 +117,85 @@ else:
 tabs = st.tabs(tab_names)
 
 # =================================================
-# TAB 1: ☀️ 스마트 양생 (NEW & Beautiful UI)
+# TAB 1: ☀️ 스마트 양생 (자동 날씨 연동)
 # =================================================
 with tabs[0]:
     st.markdown("### ☀️ Concrete Curing Manager")
     if is_kor:
-        st.caption("ACI 305R(Hot) / 306R(Cold) 규정에 따른 타설 적합성 분석")
+        st.caption("지역명을 입력하면 실시간 날씨를 가져옵니다.")
     else:
-        st.caption("Analysis based on ACI 305R & 306R Standards")
+        st.caption("Enter location to fetch real-time weather.")
 
+    # 🔍 날씨 검색 UI
     with st.container(border=True):
+        col_search, col_btn = st.columns([3, 1])
+        loc_input = col_search.text_input("위치 검색 (예: Ohio, Atlanta, 45177)", placeholder="City or ZIP Code")
+
+        if col_btn.button("🔍 날씨 가져오기", use_container_width=True):
+            if loc_input:
+                with st.spinner("Fetching weather..."):
+                    t, h, w, err = get_weather_data(loc_input)
+                    if err:
+                        st.error(err)
+                    else:
+                        # 세션 상태 업데이트 (값 덮어쓰기)
+                        st.session_state.temp_val = t
+                        st.session_state.humid_val = int(h)
+                        st.session_state.wind_val = w
+                        st.success(f"✅ Loaded: {loc_input}")
+            else:
+                st.warning("위치를 입력하세요.")
+
+        st.divider()
+
+        # 입력창 (자동으로 값이 들어감)
         c1, c2, c3 = st.columns(3)
-        temp_f = c1.number_input("기온 (Temp °F)", value=75.0, step=1.0, format="%.1f")
-        humid = c2.number_input("습도 (Humidity %)", value=50, step=5, max_value=100)
-        wind = c3.number_input("풍속 (Wind mph)", value=5.0, step=1.0)
+        temp_f = c1.number_input("기온 (Temp °F)", value=st.session_state.temp_val, step=1.0, format="%.1f",
+                                 key="temp_input")
+        humid = c2.number_input("습도 (Humidity %)", value=st.session_state.humid_val, step=5, max_value=100,
+                                key="humid_input")
+        wind = c3.number_input("풍속 (Wind mph)", value=st.session_state.wind_val, step=1.0, key="wind_input")
 
         # 섭씨 자동 변환 표시
         temp_c = (temp_f - 32) * 5 / 9
-        st.caption(f"🌡️ {temp_c:.1f}°C")
+        st.caption(f"🌡️ 변환 온도: {temp_c:.1f}°C")
 
-    # 분석 로직
+    # 분석 로직 (V26과 동일)
     evap_rate = calc_evaporation_rate(temp_c, humid, wind)
 
-    st.divider()
     st.markdown("#### 📊 분석 결과 (Analysis)")
-
     col_res1, col_res2 = st.columns([1, 1])
 
-    # 1. 온도 분석 (Cold/Hot Weather)
     with col_res1:
         st.markdown("**1. 온도 기준 (Temperature)**")
         if temp_f < 40:
             st.error("❄️ **한중 콘크리트 (Cold Weather)**")
-            st.caption("🚨 40°F 미만! 동해 방지 대책 필수 (보온/가열)")
+            st.caption("🚨 40°F 미만! 보온 양생 필수")
         elif temp_f > 90:
             st.error("🔥 **서중 콘크리트 (Hot Weather)**")
-            st.caption("🚨 90°F 초과! 쿨링 및 지연제 검토 필요")
+            st.caption("🚨 90°F 초과! 쿨링 대책 필요")
         else:
             st.success("✅ **적정 온도 (Good)**")
             st.caption("표준 시방 범위 내 (40°F ~ 90°F)")
 
-    # 2. 증발률 분석 (Cracking Risk)
     with col_res2:
         st.markdown("**2. 소성 수축 균열 (Cracking Risk)**")
         st.metric("수분 증발률 (lb/ft²/hr)", f"{evap_rate:.3f}")
 
         if evap_rate > 0.2:
             st.error("🚨 **위험 (Critical)**")
-            st.caption("0.2 초과! 즉시 균열 발생 가능성 높음. 방풍막/포깅 필수.")
+            st.caption("0.2 초과! 즉시 균열 발생 가능. 방풍막/포깅 필수.")
         elif evap_rate > 0.1:
             st.warning("⚠️ **주의 (Caution)**")
-            st.caption("0.1 초과. 모니터링 강화 필요.")
+            st.caption("0.1 초과. 모니터링 강화.")
         else:
             st.success("✅ **안전 (Safe)**")
-            st.caption("균열 위험 낮음.")
-
-    # 팁 박스
-    with st.expander("💡 소장님을 위한 팁 (Pro Tip)"):
-        st.markdown("""
-        * **Cold Weather (40°F↓):** 초기 동해를 입으면 강도가 50%나 떨어집니다. 보온 덮개를 꼭 챙기세요.
-        * **Evaporation (증발):** 바람이 조금만 불어도(10mph 이상) 증발률이 급격히 올라갑니다. 타설 중 물 뿌리기(Fogging)를 준비하세요.
-        """)
 
 # =================================================
-# TAB 2: 소통/영어
+# TAB 2~9: 기존 기능 유지 (생략 없이 V26과 동일하게 사용)
 # =================================================
+# (나머지 탭 코드는 V26과 완전히 동일하므로, 복사할 때 위쪽 TAB 1까지만 바꾸고 나머지는 그대로 두셔도 됩니다.
+#  혹시 헷갈리실까봐 V26의 나머지 탭 코드를 여기에 붙여넣으세요)
 with tabs[1]:
     if is_kor:
         comm_type = st.radio("기능", ["📻 무전 용어", "📖 건설 약어", "📧 이메일 템플릿"], horizontal=True)
@@ -241,9 +237,6 @@ with tabs[1]:
                 st.success(
                     f"Subject: Inspection Request - {item}\n\nDear Manager,\nInstallation of **{item}** is complete. Please schedule an inspection.")
 
-# =================================================
-# TAB 3: 공학 계산 (UI 개선)
-# =================================================
 with tabs[2]:
     if is_kor:
         eng_menu = st.radio("계산기", ["📉 배관 구배", "⚡ 트레이 채움률", "🏗️ 크레인 양중"], horizontal=True)
@@ -284,9 +277,6 @@ with tabs[2]:
         r = st.number_input("반경 (ft)", 50)
         st.metric("Load Moment", f"{w * r:,.0f} lbs-ft")
 
-# =================================================
-# TAB 4: 생활/금융
-# =================================================
 with tabs[3]:
     st.subheader("💱 실시간 환율 & 시차")
     df = get_exchange_rate()
@@ -308,10 +298,7 @@ with tabs[3]:
     col_t1.info(f"🇺🇸 현장 (ET)\n\n**{us_et.strftime('%H:%M')}**")
     col_t2.success(f"🇰🇷 한국 (KST)\n\n**{kr.strftime('%H:%M')}**")
 
-# =================================================
-# TAB 5~9: 기타 유틸 (UI 정돈)
-# =================================================
-with tabs[4]:  # 치수
+with tabs[4]:
     st.subheader("📏 치수 변환")
     c1, c2 = st.columns(2)
     mm = c1.number_input("mm ➡️ ft-in", 1000)
@@ -319,12 +306,12 @@ with tabs[4]:  # 치수
     ft = c2.number_input("ft ➡️ mm", 10)
     c2.code(f"{ft * 304.8:.0f} mm")
 
-with tabs[5]:  # 자재
+with tabs[5]:
     st.subheader("🚛 콘크리트 물량")
     m3 = st.number_input("입방미터 (m³)", 10.0)
     st.metric("야드 (yd³)", f"{m3 * 1.308:.2f}")
 
-with tabs[6]:  # 호환성
+with tabs[6]:
     st.subheader("🚦 볼트/공구 호환성")
     b_type = st.selectbox("볼트 규격", ["1/2 inch", "3/4 inch", "M12", "M20"])
     if "inch" in b_type:
@@ -332,12 +319,12 @@ with tabs[6]:  # 호환성
     else:
         st.success("✅ inch 공구 일부 호환 가능 (확인 필요)")
 
-with tabs[7]:  # 규격표
+with tabs[7]:
     st.subheader("📋 철근 규격")
     st.dataframe(pd.DataFrame({"US": ["#4", "#5", "#6"], "KR": ["D13", "D16", "D19"], "Dia(mm)": [12.7, 15.9, 19.1]}),
                  hide_index=True)
 
-with tabs[8]:  # 보고서
+with tabs[8]:
     st.subheader("📝 Daily Report Generator")
     work = st.text_input("금일 작업", "Concrete Pouring at Zone A")
     if st.button("Create Report"):
