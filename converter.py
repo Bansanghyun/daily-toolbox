@@ -91,17 +91,17 @@ with st.sidebar:
 
     st.divider()
 
-    # 2. 메인 메뉴 (요청하신 대로 불필요한 탭 삭제 & 핵심 기능 위주 배치)
+    # 2. 메인 메뉴
     st.markdown("### 🚀 Menu")
     menu_options = [
         "☀️ 스마트 양생 (Concrete WX)",
         "🛡️ 안전 관리 (Safety)",
         "🛒 추천템 (Picks) 🔥",
+        "🚦 호환성 판독 (Compatibility)",  # <-- 내용 보강됨
         "📐 공학 계산 (Eng Calc)",
         "💰 생활/금융 (Life)",
         "📏 치수 변환 (Unit)",
-        "🏗️ 자재/배관 (Material)",
-        "🚦 호환성 (Compatibility)"
+        "🏗️ 자재/배관 (Material)"
     ]
     selected_menu = st.radio("기능 선택", menu_options, label_visibility="collapsed")
 
@@ -122,7 +122,7 @@ with st.sidebar:
     st.caption("shban127@gmail.com")
 
 # ==========================================
-# 📺 메인 화면 (기능별 상세 로직 복구 완료)
+# 📺 메인 화면
 # ==========================================
 
 # 1. ☀️ 스마트 양생
@@ -213,7 +213,7 @@ if "스마트 양생" in selected_menu:
             else:
                 st.success("✅ **SAFE**")
 
-# 2. 🛡️ 안전 관리 (V37 기능 복구)
+# 2. 🛡️ 안전 관리
 elif "안전" in selected_menu:
     st.header("🛡️ 안전 관리 (Safety Manager)")
     if is_kor:
@@ -247,15 +247,13 @@ elif "안전" in selected_menu:
                 elif "전기" in check:
                     st.markdown("- [ ] 모든 공구 GFCI 사용 중인가?\n- [ ] 전선 피복 상태 양호한가?\n- [ ] 분전반 앞 36인치 확보되었는가?")
                 elif "LOTO" in check:
-                    st.markdown("- [ ] 자물쇠/태그가 체결되었는가?\n- [ ] 대장에 기록되었는가?\n- [ ] 열쇠를 본인이 소지했는가?")
+                    st.markdown("- [ ] 자물쇠/태그가 체결되었는가?\n- [ ] 대장 기록되었는가?\n- [ ] 열쇠를 본인이 소지했는가?")
     else:
-        # English simple version
         st.subheader("Safety Tools")
         st.info("Switch to Korean mode for detailed Safety Checklist.")
 
-# 3. 🛒 추천템 (링크 4개 적용)
+# 3. 🛒 추천템
 elif "추천템" in selected_menu:
-    # ▼▼▼ 링크 4개 적용 완료 ▼▼▼
     link_boot = "https://amzn.to/3YkSN1g"
     link_glass = "https://amzn.to/3LgnNMS"
     link_laser = "https://amzn.to/4smcR0J"
@@ -293,11 +291,86 @@ elif "추천템" in selected_menu:
             st.markdown("이거 하나면 현장/정비 끝. 가성비 갑.")
             st.link_button("👉 아마존 최저가 확인", link_tool, use_container_width=True)
 
-# 4. 공학 계산 (로직 100% 복구)
+# =================================================
+# 4. 🚦 호환성 (🔥 대폭 보강됨)
+# =================================================
+elif "호환" in selected_menu:
+    st.header("🚦 호환성 판독 (Compatibility Check)")
+
+    if is_kor:
+        comp_tabs = st.tabs(["🔧 렌치/소켓 (mm vs inch)", "🔩 배관 나사 (NPT vs PT)", "🔘 플랜지 (ANSI vs JIS)"])
+
+        # 4-1. 렌치/소켓
+        with comp_tabs[0]:
+            st.subheader("🔧 렌치 & 소켓 비상 호환표")
+            st.caption("인치 공구가 없을 때 mm 공구로 작업이 가능한가?")
+
+            c1, c2 = st.columns([1, 2])
+            inch_size = c1.selectbox("인치 볼트 규격",
+                                     ["5/16\"", "3/8\"", "7/16\"", "1/2\"", "9/16\"", "5/8\"", "3/4\"", "7/8\"",
+                                      "15/16\"", "1\""])
+
+            # 호환 로직
+            match_db = {
+                "5/16\"": ("8mm", "✅ 완벽 호환 (Perfect)"),
+                "3/8\"": ("10mm", "❌ 사용 불가 (9.5mm라 10mm는 헛돔)"),
+                "7/16\"": ("11mm", "⚠️ 헐거움 (Loose) - 비상시에만"),
+                "1/2\"": ("13mm", "✅ 사용 가능 (12.7mm vs 13mm)"),
+                "9/16\"": ("14mm", "✅ 사용 가능 (14.2mm라 14mm가 꽉 낌)"),
+                "5/8\"": ("16mm", "✅ 사용 가능 (15.8mm vs 16mm)"),
+                "3/4\"": ("19mm", "✅ 완벽 호환 (Perfect)"),
+                "7/8\"": ("22mm", "✅ 사용 가능 (22.2mm vs 22mm)"),
+                "15/16\"": ("24mm", "✅ 완벽 호환 (Perfect)"),
+                "1\"": ("25mm", "❌ 사용 불가 (25.4mm라 안 들어감)")
+            }
+            res_mm, res_msg = match_db[inch_size]
+
+            with st.container(border=True):
+                st.metric("대체 가능한 mm 규격", res_mm)
+                if "✅" in res_msg:
+                    st.success(res_msg)
+                elif "⚠️" in res_msg:
+                    st.warning(res_msg)
+                else:
+                    st.error(res_msg)
+
+        # 4-2. 배관 나사
+        with comp_tabs[1]:
+            st.subheader("🔩 배관 나사산 (NPT vs PT/BSP)")
+            st.caption("미국(NPT)과 한국(PT) 배관을 연결해도 되는가?")
+
+            c1, c2 = st.columns(2)
+            us_pipe = c1.selectbox("미국 배관", ["NPT (National Pipe Taper)"])
+            kr_pipe = c2.selectbox("한국/유럽 배관", ["PT (BSP)"])
+
+            st.error("🚫 **절대 호환 불가 (Do Not Mix)**")
+            st.markdown("""
+            * **각도 차이:** NPT는 **60도**, PT는 **55도**입니다.
+            * **결과:** 억지로 끼우면 몇 바퀴 들어가다가 멈추며, **100% 누수(Leak)** 발생합니다.
+            * **해결:** 반드시 **'NPT to PT 어댑터'**를 사용해야 합니다.
+            """)
+
+        # 4-3. 플랜지
+        with comp_tabs[2]:
+            st.subheader("🔘 플랜지 규격 (ANSI vs JIS/DIN)")
+            st.caption("볼트 구멍이 일치하는가?")
+
+            flange_size = st.selectbox("배관 사이즈", ["2 inch (50A)", "3 inch (80A)", "4 inch (100A)", "6 inch (150A)"])
+
+            if "4 inch" in flange_size:
+                st.warning("⚠️ **호환 불가 (구멍 수 다름)**")
+                st.write("ANSI 150# (8홀) vs JIS 10K (8홀) -> **PCD가 달라서 볼트가 안 들어감.**")
+            else:
+                st.error("❌ **호환 불가**")
+                st.write("미국 ANSI 플랜지와 한국 JIS/DIN 플랜지는 볼트 구멍 간격(PCD)이 미세하게 다릅니다. 가공 없이는 체결 불가능합니다.")
+
+    else:
+        st.header("Compatibility")
+        st.info("Detailed charts available in Korean mode.")
+
+# 5. 공학 계산
 elif "공학" in selected_menu:
     st.header("📐 공학 계산기")
-
-    # 탭으로 서브 메뉴 구성 (더 깔끔하게)
     sub_tabs = st.tabs(["🔧 볼트 토크", "📉 배관 구배", "🏗️ 크레인 양중", "⚡ 트레이 채움률"])
 
     with sub_tabs[0]:  # 볼트
@@ -344,7 +417,7 @@ elif "공학" in selected_menu:
         else:
             st.success("✅ 양호 (Pass)")
 
-# 5. 생활/금융 (로직 100% 복구)
+# 6. 생활/금융
 elif "생활" in selected_menu:
     st.header("💰 생활 & 금융")
     sub_tabs = st.tabs(["💱 환율", "💰 야근 비용", "💸 연봉 실수령", "⏰ 시차", "🍽️ 팁"])
@@ -395,7 +468,7 @@ elif "생활" in selected_menu:
         total = bill * (1 + tip / 100)
         st.metric("인당 지불액", f"${total / ppl:.2f}")
 
-# 6. 치수 변환 (복구)
+# 7. 치수 변환
 elif "치수" in selected_menu:
     st.header("📏 치수 변환")
     c1, c2 = st.columns(2)
@@ -406,18 +479,9 @@ elif "치수" in selected_menu:
         ft = st.number_input("ft ➡️ mm", 10)
         st.code(f"{ft * 304.8:.0f} mm")
 
-# 7. 자재/배관 (복구)
+# 8. 자재/배관
 elif "자재" in selected_menu:
     st.header("🏗️ 자재/배관")
     st.subheader("🚛 콘크리트 물량 변환")
     m3 = st.number_input("입방미터 (m³)", 10.0)
     st.metric("야드 (yd³)", f"{m3 * 1.308:.2f}")
-
-# 8. 호환성 (복구)
-elif "호환" in selected_menu:
-    st.header("🚦 호환성 판독")
-    tool = st.selectbox("Tool / Bolt", ["1/2 inch", "M12"])
-    if "inch" in tool:
-        st.error("⚠️ mm 공구 사용 금지! (규격 불일치)")
-    else:
-        st.success("✅ inch 공구 일부 호환 가능")
