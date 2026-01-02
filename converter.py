@@ -14,7 +14,8 @@ try:
 except ImportError:
     HAS_YFINANCE = False
 
-st.set_page_config(page_title="Daily Toolbox Pro", page_icon="🧰", layout="wide")  # 넓은 화면 사용
+# 화면 넓게 쓰기 (Layout: Wide)
+st.set_page_config(page_title="Daily Toolbox Pro", page_icon="🧰", layout="wide")
 
 
 # ==========================================
@@ -78,7 +79,7 @@ if 'humid_val' not in st.session_state: st.session_state.humid_val = 50
 if 'wind_val' not in st.session_state: st.session_state.wind_val = 5.0
 
 # ==========================================
-# 🎨 사이드바 (메뉴 & 설정 통합)
+# 🎨 사이드바 (메뉴 & 설정)
 # ==========================================
 with st.sidebar:
     st.title("🧰 Daily Toolbox")
@@ -90,26 +91,23 @@ with st.sidebar:
 
     st.divider()
 
-    # 2. 메인 메뉴 (여기로 이동해서 절대 안 짤림!)
+    # 2. 메인 메뉴 (요청하신 대로 불필요한 탭 삭제 & 핵심 기능 위주 배치)
     st.markdown("### 🚀 Menu")
     menu_options = [
         "☀️ 스마트 양생 (Concrete WX)",
         "🛡️ 안전 관리 (Safety)",
         "🛒 추천템 (Picks) 🔥",
-        "🗣️ 소통/영어 (Comm)",
-        "📐 공학 계산 (Calc)",
+        "📐 공학 계산 (Eng Calc)",
         "💰 생활/금융 (Life)",
         "📏 치수 변환 (Unit)",
         "🏗️ 자재/배관 (Material)",
-        "🚦 호환성 (Comp)",
-        "📋 규격표 (Charts)",
-        "📧 보고서 (Report)"
+        "🚦 호환성 (Compatibility)"
     ]
-    selected_menu = st.radio("기능 선택", menu_options)
+    selected_menu = st.radio("기능 선택", menu_options, label_visibility="collapsed")
 
     st.divider()
 
-    # 3. 후원 및 연락처
+    # 3. 후원
     st.markdown("### ☕ Support")
     bmc_link = "https://www.buymeacoffee.com/vvaann"
     st.markdown(
@@ -124,7 +122,7 @@ with st.sidebar:
     st.caption("shban127@gmail.com")
 
 # ==========================================
-# 📺 메인 화면 (선택된 메뉴에 따라 바뀜)
+# 📺 메인 화면 (기능별 상세 로직 복구 완료)
 # ==========================================
 
 # 1. ☀️ 스마트 양생
@@ -156,28 +154,66 @@ if "스마트 양생" in selected_menu:
         st.subheader("📊 분석 결과")
         c1, c2 = st.columns(2)
         with c1:
-            st.markdown("**1. 온도 기준**")
-            if temp_f < 40:
-                st.error("❄️ **한중 (Cold)**\n\n40°F 미만! 보온 필수");
-            elif temp_f > 90:
-                st.error("🔥 **서중 (Hot)**\n\n90°F 초과! 쿨링 필요");
-            else:
-                st.success("✅ **적정 (Good)**\n\n40°F ~ 90°F")
+            with st.container(border=True):
+                st.markdown("**1. 온도 기준**")
+                if temp_f < 40:
+                    st.error("❄️ **한중 (Cold)**\n\n40°F 미만! 보온 필수");
+                elif temp_f > 90:
+                    st.error("🔥 **서중 (Hot)**\n\n90°F 초과! 쿨링 필요");
+                else:
+                    st.success("✅ **적정 (Good)**\n\n40°F ~ 90°F")
         with c2:
-            st.markdown("**2. 균열 위험도**")
-            st.metric("증발률", f"{evap_rate:.3f}", "lb/ft²/hr")
-            if evap_rate > 0.2:
-                st.error("🚨 **위험 (Critical)**\n\n즉시 균열 위험! 방풍막/포깅")
-            elif evap_rate > 0.1:
-                st.warning("⚠️ **주의 (Caution)**\n\n모니터링 강화")
-            else:
-                st.success("✅ **안전 (Safe)**")
+            with st.container(border=True):
+                st.markdown("**2. 균열 위험도**")
+                st.metric("증발률", f"{evap_rate:.3f}", "lb/ft²/hr")
+                if evap_rate > 0.2:
+                    st.error("🚨 **위험 (Critical)**\n\n즉시 균열 위험! 방풍막/포깅")
+                elif evap_rate > 0.1:
+                    st.warning("⚠️ **주의 (Caution)**\n\n모니터링 강화")
+                else:
+                    st.success("✅ **안전 (Safe)**")
     else:
         st.header("☀️ Concrete Curing Manager")
-        # (English UI Logic omitted for brevity, logic remains same)
-        st.info("Please switch to Korean for full details or use inputs above.")
+        st.caption("ACI 305R/306R Standards.")
+        with st.container(border=True):
+            col_search, col_btn = st.columns([3, 1])
+            loc_input = col_search.text_input("Search Location", placeholder="City or ZIP")
+            if col_btn.button("🔍 Get Weather"):
+                if loc_input:
+                    with st.spinner("Fetching..."):
+                        t, h, w, err = get_weather_data(loc_input)
+                        if err:
+                            st.error("Location not found.")
+                        else:
+                            st.session_state.temp_val = t
+                            st.session_state.humid_val = int(h)
+                            st.session_state.wind_val = w
+                            st.success(f"✅ Loaded: {loc_input}")
+            c1, c2, c3 = st.columns(3)
+            temp_f = c1.number_input("Temp (°F)", value=st.session_state.temp_val, format="%.1f")
+            humid = c2.number_input("Humidity (%)", value=st.session_state.humid_val)
+            wind = c3.number_input("Wind (mph)", value=st.session_state.wind_val)
 
-# 2. 🛡️ 안전 관리
+        evap_rate = calc_evaporation_rate((temp_f - 32) * 5 / 9, humid, wind)
+        st.subheader("📊 Analysis")
+        c1, c2 = st.columns(2)
+        with c1:
+            if temp_f < 40:
+                st.error("❄️ **Cold Weather**\n\nProtection required");
+            elif temp_f > 90:
+                st.error("🔥 **Hot Weather**\n\nCooling required");
+            else:
+                st.success("✅ **Good**")
+        with c2:
+            st.metric("Evaporation Rate", f"{evap_rate:.3f}")
+            if evap_rate > 0.2:
+                st.error("🚨 **CRITICAL**");
+            elif evap_rate > 0.1:
+                st.warning("⚠️ **CAUTION**");
+            else:
+                st.success("✅ **SAFE**")
+
+# 2. 🛡️ 안전 관리 (V37 기능 복구)
 elif "안전" in selected_menu:
     st.header("🛡️ 안전 관리 (Safety Manager)")
     if is_kor:
@@ -186,7 +222,6 @@ elif "안전" in selected_menu:
             st.subheader("📋 JHA (Job Hazard Analysis)")
             work_type = st.selectbox("작업 종류", ["용접/절단 (Hot Work)", "고소 작업 (Working at Heights)", "중량물 인양 (Lifting)",
                                                "굴착 (Excavation)"])
-
             jha_db = {
                 "용접/절단 (Hot Work)": ("Fire, Fumes, Burns",
                                      "1. Hot Work Permit.\n2. Fire Extinguisher (30ft).\n3. Fire Watch.\n4. Face Shield."),
@@ -198,24 +233,27 @@ elif "안전" in selected_menu:
                 "Cave-ins, Utilities", "1. Call 811.\n2. Trench Box (>5ft).\n3. Spoil pile 2ft back.\n4. Barricades.")
             }
             h, c = jha_db[work_type]
-            st.warning(f"**⚠️ Hazards:**\n{h}")
-            st.success(f"**✅ Controls:**\n{c}")
+            with st.container(border=True):
+                st.warning(f"**⚠️ 위험 요인 (Hazards):**\n{h}")
+                st.success(f"**✅ 안전 대책 (Controls):**\n{c}")
 
         with tab2:
             st.subheader("🛑 Life Critical Checklist")
-            check = st.selectbox("항목", ["추락 (Fall)", "전기 (Electrical)", "LOTO"])
-            if "추락" in check:
-                st.markdown("- [ ] 6ft 이상 100% 체결?\n- [ ] 리프트 문 닫힘?\n- [ ] 벨트 파손 없음?")
-                st.error("🚨 위반 시 즉시 퇴출 (Kick-out)")
-            elif "전기" in check:
-                st.markdown("- [ ] GFCI 사용?\n- [ ] 전선 피복 양호?\n- [ ] 분전반 앞 36인치 확보?")
-            elif "LOTO" in check:
-                st.markdown("- [ ] 자물쇠/태그 체결?\n- [ ] 대장 기록?\n- [ ] 열쇠 본인 소지?")
+            check = st.selectbox("점검 항목", ["추락 (Fall)", "전기 (Electrical)", "LOTO"])
+            with st.container(border=True):
+                if "추락" in check:
+                    st.markdown("- [ ] 6ft 이상 100% 체결했는가?\n- [ ] 리프트 문을 닫았는가?\n- [ ] 안전벨트 파손이 없는가?")
+                    st.error("🚨 위반 시 즉시 퇴출 (Kick-out)")
+                elif "전기" in check:
+                    st.markdown("- [ ] 모든 공구 GFCI 사용 중인가?\n- [ ] 전선 피복 상태 양호한가?\n- [ ] 분전반 앞 36인치 확보되었는가?")
+                elif "LOTO" in check:
+                    st.markdown("- [ ] 자물쇠/태그가 체결되었는가?\n- [ ] 대장에 기록되었는가?\n- [ ] 열쇠를 본인이 소지했는가?")
     else:
-        st.header("Safety Manager")
-        st.write("Select options in Korean mode for full content.")
+        # English simple version
+        st.subheader("Safety Tools")
+        st.info("Switch to Korean mode for detailed Safety Checklist.")
 
-# 3. 🛒 추천템 (광고 탭 - 이제 잘 보입니다!)
+# 3. 🛒 추천템 (링크 4개 적용)
 elif "추천템" in selected_menu:
     # ▼▼▼ 링크 4개 적용 완료 ▼▼▼
     link_boot = "https://amzn.to/3YkSN1g"
@@ -234,7 +272,6 @@ elif "추천템" in selected_menu:
             st.caption("Timberland PRO (Waterproof)")
             st.markdown("미국 현장 국룰. 방수/절연/편안함.")
             st.link_button("👉 아마존 최저가 확인", link_boot, use_container_width=True)
-
     with col2:
         with st.container(border=True):
             st.markdown("### 👓 김서림 방지 고글")
@@ -249,7 +286,6 @@ elif "추천템" in selected_menu:
             st.caption("Klein Tools Green Cross-Line")
             st.markdown("전기/설비팀 필수. 시인성 최고.")
             st.link_button("👉 아마존 최저가 확인", link_laser, use_container_width=True)
-
     with col4:
         with st.container(border=True):
             st.markdown("### 🧰 끝판왕 공구세트")
@@ -257,77 +293,131 @@ elif "추천템" in selected_menu:
             st.markdown("이거 하나면 현장/정비 끝. 가성비 갑.")
             st.link_button("👉 아마존 최저가 확인", link_tool, use_container_width=True)
 
-# 4. 소통/영어
-elif "소통" in selected_menu:
-    st.header("🗣️ 소통 & 영어 (Communication)")
-    if is_kor:
-        t = st.radio("도구", ["무전 용어", "이메일 템플릿"], horizontal=True)
-        if "무전" in t:
-            st.table(pd.DataFrame([{"Term": "10-4", "Meaning": "수신 양호"}, {"Term": "Copy", "Meaning": "이해함"},
-                                   {"Term": "20?", "Meaning": "위치?"}]))
-        else:
-            st.info("Subject: Notice of Delay\n\nWe regret to inform you of a delay due to supply chain issues.")
-
-# 5. 공학 계산
+# 4. 공학 계산 (로직 100% 복구)
 elif "공학" in selected_menu:
     st.header("📐 공학 계산기")
-    tool = st.selectbox("계산기 선택", ["🔧 볼트 토크", "📉 배관 구배", "🏗️ 크레인 양중", "⚡ 트레이 채움률"])
 
-    if "볼트" in tool:
+    # 탭으로 서브 메뉴 구성 (더 깔끔하게)
+    sub_tabs = st.tabs(["🔧 볼트 토크", "📉 배관 구배", "🏗️ 크레인 양중", "⚡ 트레이 채움률"])
+
+    with sub_tabs[0]:  # 볼트
         st.subheader("🔧 볼트 체결 토크 (A325/A490)")
         c1, c2 = st.columns(2)
         sz = c1.selectbox("Size", ["1/2", "5/8", "3/4", "7/8", "1"])
         gr = c2.selectbox("Grade", ["A325", "A490"])
-        # DB
-        tdb = {"A325": {"1/2": 90, "3/4": 320, "1": 750}, "A490": {"1/2": 110, "3/4": 390, "1": 900}}  # Simplified
-        val = tdb.get(gr, {}).get(sz, "Check Manual")
+        tdb = {"A325": {"1/2": 90, "5/8": 180, "3/4": 320, "7/8": 500, "1": 750},
+               "A490": {"1/2": 110, "5/8": 220, "3/4": 390, "7/8": 600, "1": 900}}
+        val = tdb.get(gr, {}).get(sz, 0)
         st.success(f"🎯 권장 토크: **{val} ft-lbs**")
 
-    elif "구배" in tool:
+    with sub_tabs[1]:  # 구배
+        st.subheader("📉 배관 구배 계산")
         c1, c2 = st.columns(2)
         l = c1.number_input("길이 (ft)", 100.0)
-        s = c2.select_slider("Slope", ["1/8", "1/4"])
-        drop = l * (0.125 if "8" in s else 0.25)
-        st.info(f"⬇️ 높이 차이: **{drop:.2f} inch**")
+        s = c2.select_slider("Slope (inch/ft)", ["1/8", "1/4", "1/2", "1"])
+        sl_val = {"1/8": 0.125, "1/4": 0.25, "1/2": 0.5, "1": 1.0}[s]
+        drop = l * sl_val
+        st.info(f"⬇️ 높이 차이 (Drop): **{drop:.2f} inch** ({drop * 25.4:.1f} mm)")
 
-# 6. 생활/금융
+    with sub_tabs[2]:  # 크레인
+        st.subheader("🏗️ 크레인 부하 모멘트")
+        c1, c2 = st.columns(2)
+        w = c1.number_input("무게 (lbs)", 5000)
+        r = c2.number_input("작업 반경 (ft)", 50)
+        st.metric("Load Moment", f"{w * r:,.0f}", "lbs-ft")
+
+    with sub_tabs[3]:  # 트레이
+        st.subheader("⚡ 케이블 트레이 채움률")
+        c1, c2, c3 = st.columns(3)
+        w = c1.selectbox("폭 (Width)", [12, 18, 24, 30, 36])
+        d = c2.selectbox("깊이 (Depth)", [4, 6])
+        dia = c3.number_input("케이블 외경 (inch)", 1.0)
+        cnt = st.slider("가닥수", 1, 100, 20)
+
+        area_tray = w * d
+        area_cable = (math.pi * (dia / 2) ** 2) * cnt
+        ratio = (area_cable / area_tray) * 100
+
+        st.metric("채움률 (Limit: 40%)", f"{ratio:.1f}%")
+        if ratio > 40:
+            st.error("❌ 초과 (Overfilled)")
+        else:
+            st.success("✅ 양호 (Pass)")
+
+# 5. 생활/금융 (로직 100% 복구)
 elif "생활" in selected_menu:
     st.header("💰 생활 & 금융")
-    menu = st.radio("메뉴", ["💱 환율", "💰 야근 비용 계산", "💸 연봉 실수령"], horizontal=True)
+    sub_tabs = st.tabs(["💱 환율", "💰 야근 비용", "💸 연봉 실수령", "⏰ 시차", "🍽️ 팁"])
 
-    if "야근" in menu:
+    with sub_tabs[0]:  # 환율
+        rate = 1450.0
+        df = get_exchange_rate()
+        if df is not None: rate = df['Close'].iloc[-1]
+
+        c1, c2 = st.columns(2)
+        c1.metric("USD/KRW", f"{rate:.1f} 원")
+        usd = c2.number_input("달러 입력 ($)", 1000)
+        c2.caption(f"≒ {int(usd * rate):,} 원")
+        if df is not None: st.line_chart(df['Close'])
+
+    with sub_tabs[1]:  # 야근
         st.subheader("💰 야근 비용 계산기")
         c1, c2 = st.columns(2)
         ppl = c1.number_input("인원 (명)", 5)
-        rate = c2.number_input("시급 ($)", 40.0)
-        hrs = st.number_input("시간 (hr)", 2.0)
-        st.metric("총 비용 (1.5배)", f"${ppl * rate * hrs * 1.5:,.0f}")
+        rate_hr = c2.number_input("시급 ($)", 40.0)
+        c3, c4 = st.columns(2)
+        hrs = c3.number_input("시간 (hr)", 2.0)
+        mul = c4.radio("배수", ["1.5배", "2.0배"], horizontal=True)
+        m_val = 1.5 if "1.5" in mul else 2.0
+        st.metric("총 비용", f"${ppl * rate_hr * hrs * m_val:,.0f}")
 
-    elif "환율" in menu:
-        rate = 1450.0  # Fallback
-        df = get_exchange_rate()
-        if df is not None: rate = df['Close'].iloc[-1]
-        st.metric("USD/KRW", f"{rate:.1f} 원")
+    with sub_tabs[2]:  # 연봉
+        st.subheader("💸 연봉 실수령액 (Net Salary)")
+        s = st.number_input("연봉 ($)", 80000, step=1000)
+        tax = max(0, s - 14600) * 0.22  # 대략적 세율
+        net = s - tax
+        st.metric("월 실수령액 (예상)", f"${net / 12:,.0f}")
 
-# 7~11. 나머지 기능들 (간략화하여 통합)
+    with sub_tabs[3]:  # 시차
+        st.subheader("🌏 글로벌 시차")
+        tz_e = pytz.timezone('US/Eastern');
+        tz_k = pytz.timezone('Asia/Seoul')
+        now = datetime.now(tz_e)
+        c1, c2 = st.columns(2)
+        c1.metric("미국 동부 (ET)", now.strftime('%I:%M %p'))
+        c2.metric("한국 (KST)", now.astimezone(tz_k).strftime('%I:%M %p'))
+
+    with sub_tabs[4]:  # 팁
+        st.subheader("🍽️ 팁 & 더치페이")
+        bill = st.number_input("Bill ($)", 50.0)
+        tip = st.slider("Tip %", 15, 25, 18)
+        ppl = st.number_input("People", 1, 10, 1)
+        total = bill * (1 + tip / 100)
+        st.metric("인당 지불액", f"${total / ppl:.2f}")
+
+# 6. 치수 변환 (복구)
 elif "치수" in selected_menu:
     st.header("📏 치수 변환")
-    mm = st.number_input("mm", 1000)
-    st.code(f"{mm} mm = {mm / 25.4 / 12:.2f} ft")
+    c1, c2 = st.columns(2)
+    with c1:
+        mm = st.number_input("mm ➡️ ft-in", 1000)
+        st.code(f"{mm / 25.4 / 12:.2f} ft")
+    with c2:
+        ft = st.number_input("ft ➡️ mm", 10)
+        st.code(f"{ft * 304.8:.0f} mm")
 
+# 7. 자재/배관 (복구)
 elif "자재" in selected_menu:
     st.header("🏗️ 자재/배관")
-    st.write("콘크리트 물량 계산 등 (준비 중)")
+    st.subheader("🚛 콘크리트 물량 변환")
+    m3 = st.number_input("입방미터 (m³)", 10.0)
+    st.metric("야드 (yd³)", f"{m3 * 1.308:.2f}")
 
+# 8. 호환성 (복구)
 elif "호환" in selected_menu:
     st.header("🚦 호환성 판독")
-    st.success("Inch 공구 사용 권장")
-
-elif "규격" in selected_menu:
-    st.header("📋 규격표")
-    st.dataframe(pd.DataFrame({"Size": ["#4", "#5"], "mm": [12.7, 15.9]}))
-
-elif "보고서" in selected_menu:
-    st.header("📧 일일 보고서")
-    w = st.text_input("작업 내용", "Concrete Pouring")
-    if st.button("생성"): st.code(f"Work: {w}\nStatus: OK")
+    tool = st.selectbox("Tool / Bolt", ["1/2 inch", "M12"])
+    if "inch" in tool:
+        st.error("⚠️ mm 공구 사용 금지! (규격 불일치)")
+    else:
+        st.success("✅ inch 공구 일부 호환 가능")
