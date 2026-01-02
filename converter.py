@@ -110,18 +110,21 @@ with st.sidebar:
 if is_kor:
     st.title("🧰 데일리 툴박스 (Pro)")
     st.markdown("현장 전문가를 위한 **올인원 엔지니어링 킷**")
-    tab_names = ["☀️ 스마트 양생", "🗣️ 소통/영어", "📐 공학 계산", "💰 생활/금융", "📏 치수 변환", "🏗️ 자재/배관", "🚦 호환성", "📋 규격표", "📧 보고서"]
+    tab_names = ["☀️ 스마트 양생", "🗣️ 소통/영어", "📐 공학 계산", "💰 생활/금융", "📏 치수 변환", "🏗️ 자재/배관", "🚦 호환성", "📋 규격표", "📧 보고서",
+                 "🛒 추천템"]
 else:
     st.title("🧰 The Daily Toolbox")
     st.markdown("All-in-One Engineering Kit for Professionals")
     tab_names = ["☀️ Concrete WX", "🗣️ Comm", "📐 Eng Calc", "💰 Life", "📏 Dim", "🏗️ Mat", "🚦 Comp", "📋 Charts",
-                 "📧 Report"]
+                 "📧 Report", "🛒 Picks"]
 
 tabs = st.tabs(tab_names)
 
 # =================================================
-# TAB 1: ☀️ 스마트 양생 (V30 유지)
+# TAB 1~9: 기존 기능 유지
 # =================================================
+
+# 1. 스마트 양생
 with tabs[0]:
     if is_kor:
         st.markdown("### ☀️ 스마트 콘크리트 양생 관리")
@@ -210,9 +213,7 @@ with tabs[0]:
             else:
                 st.success("✅ **SAFE**")
 
-# =================================================
-# TAB 2: 소통 (V30 유지)
-# =================================================
+# 2. 소통
 with tabs[1]:
     if is_kor:
         comm_type = st.radio("기능", ["📻 무전 용어", "📖 건설 약어", "📧 이메일 템플릿"], horizontal=True)
@@ -257,12 +258,9 @@ with tabs[1]:
                     st.success(
                         f"Subject: Inspection Request - {i}\n\nDear Manager,\nInstallation of **{i}** is complete.")
 
-# =================================================
-# TAB 3: 공학 계산 (🔥 볼트 토크 기능 추가됨)
-# =================================================
+# 3. 공학 계산
 with tabs[2]:
     if is_kor:
-        # 🔧 '볼트 토크' 메뉴 추가
         eng_menu = st.radio("계산기", ["📉 배관 구배", "⚡ 트레이 채움률", "🏗️ 크레인 양중", "🔧 볼트 토크"], horizontal=True)
         st.divider()
         if "구배" in eng_menu:
@@ -288,24 +286,15 @@ with tabs[2]:
             r = st.number_input("반경 (ft)", 50)
             st.metric("부하 모멘트", f"{w * r:,.0f} lbs-ft")
         elif "볼트" in eng_menu:
-            # 🔧 볼트 토크 로직 (한국어)
             st.subheader("🔧 볼트 체결 토크 (AISC/RCSC)")
-            st.caption("고장력 볼트(High Strength Bolt) 권장 토크값")
             c1, c2 = st.columns(2)
             b_size = c1.selectbox("볼트 직경 (Inch)", ["1/2", "5/8", "3/4", "7/8", "1"])
             b_grade = c2.selectbox("등급 (Grade)", ["A325", "A490"])
-
-            # 토크 데이터 (ft-lbs) - 일반적인 현장 참조값
-            torque_db = {
-                "A325": {"1/2": 90, "5/8": 180, "3/4": 320, "7/8": 500, "1": 750},
-                "A490": {"1/2": 110, "5/8": 220, "3/4": 390, "7/8": 600, "1": 900}
-            }
+            torque_db = {"A325": {"1/2": 90, "5/8": 180, "3/4": 320, "7/8": 500, "1": 750},
+                         "A490": {"1/2": 110, "5/8": 220, "3/4": 390, "7/8": 600, "1": 900}}
             res = torque_db[b_grade][b_size]
             st.success(f"🎯 **권장 토크: {res} ft-lbs**")
-            st.caption("※ 현장 상황/윤활 여부에 따라 달라질 수 있음.")
-
     else:
-        # 🔧 Added 'Bolt Torque'
         eng_menu = st.radio("Tool", ["📉 Slope Calc", "⚡ Tray Fill", "🏗️ Crane Lift", "🔧 Bolt Torque"], horizontal=True)
         st.divider()
         if "Slope" in eng_menu:
@@ -331,46 +320,35 @@ with tabs[2]:
             r = st.number_input("Radius (ft)", 50)
             st.metric("Load Moment", f"{w * r:,.0f} lbs-ft")
         elif "Bolt" in eng_menu:
-            # 🔧 Bolt Torque Logic (English)
             st.subheader("🔧 Bolt Tightening Torque")
             st.caption("Based on AISC/RCSC Standards")
             c1, c2 = st.columns(2)
             b_size = c1.selectbox("Diameter (Inch)", ["1/2", "5/8", "3/4", "7/8", "1"])
             b_grade = c2.selectbox("Grade", ["A325", "A490"])
-
-            torque_db = {
-                "A325": {"1/2": 90, "5/8": 180, "3/4": 320, "7/8": 500, "1": 750},
-                "A490": {"1/2": 110, "5/8": 220, "3/4": 390, "7/8": 600, "1": 900}
-            }
+            torque_db = {"A325": {"1/2": 90, "5/8": 180, "3/4": 320, "7/8": 500, "1": 750},
+                         "A490": {"1/2": 110, "5/8": 220, "3/4": 390, "7/8": 600, "1": 900}}
             res = torque_db[b_grade][b_size]
             st.success(f"🎯 **Target Torque: {res} ft-lbs**")
 
-# =================================================
-# TAB 4: 생활/금융 (🔥 야근 비용 기능 추가됨)
-# =================================================
+# 4. 생활/금융
 with tabs[3]:
     if is_kor:
-        # 💰 '야근 비용' 메뉴 추가
         life_menu = st.radio("메뉴", ["💱 실시간 환율", "⏰ 한-미 시차", "💸 연봉 실수령액", "💰 야근 비용", "🍽️ 팁/더치페이"], horizontal=True)
         st.divider()
-
         if "환율" in life_menu:
             st.subheader("💱 원/달러 환율 (USD/KRW)")
             df_rate = get_exchange_rate()
             if df_rate is not None:
                 curr = df_rate['Close'].iloc[-1];
                 prev = df_rate['Close'].iloc[-2]
-                c1, c2 = st.columns([1, 2])
-                c1.metric("현재 환율", f"{curr:.2f} 원", f"{curr - prev:.2f} 원")
+                st.metric("현재 환율", f"{curr:.2f} 원", f"{curr - prev:.2f} 원")
                 st.line_chart(df_rate['Close'])
                 rate = curr
             else:
                 st.warning("⚠️ 인터넷 연결 실패. 수동 입력해주세요.")
                 rate = st.number_input("환율 직접 입력 (원)", 1450.0)
-            c1, c2 = st.columns(2)
-            u_in = c1.number_input("달러 (USD)", 1000.0)
-            c2.metric("원화 (KRW)", f"{int(u_in * rate):,} 원")
-
+            u_in = st.number_input("달러 (USD)", 1000.0)
+            st.metric("원화 (KRW)", f"{int(u_in * rate):,} 원")
         elif "시차" in life_menu:
             st.subheader("🌏 글로벌 시차 시뮬레이션")
             tz_e = pytz.timezone('US/Eastern');
@@ -390,7 +368,6 @@ with tabs[3]:
                 st.success("✅ 한국은 업무 시간입니다.")
             else:
                 st.warning("🌙 한국은 퇴근 후입니다.")
-
         elif "연봉" in life_menu:
             st.subheader("💸 연봉 실수령액 (Net Salary)")
             s = st.number_input("연봉 (Gross Salary $)", 80000, step=1000)
@@ -400,27 +377,18 @@ with tabs[3]:
             c1, c2 = st.columns(2)
             c1.metric("예상 세금 (Tax)", f"-${(tax + fica):,.0f}")
             c2.metric("월 실수령액", f"${net / 12:,.0f}")
-
         elif "야근" in life_menu:
-            # 💰 야근 비용 계산 로직 (한국어)
             st.subheader("💰 야근/특근 비용 계산기")
-            st.caption("추가 작업(Overtime) 발생 시 예상 비용")
-
             c1, c2 = st.columns(2)
             ppl = c1.number_input("투입 인원 (명)", 1, 50, 5)
             rate = c2.number_input("평균 시급 ($)", 25.0, 100.0, 40.0)
-
             c3, c4 = st.columns(2)
             hours = c3.number_input("추가 시간 (Hours)", 1.0, 24.0, 2.0)
             mul = c4.radio("할증 비율", ["1.5배 (평일OT)", "2.0배 (휴일/심야)"], horizontal=True)
-
             m_val = 1.5 if "1.5" in mul else 2.0
             total_cost = ppl * rate * hours * m_val
-
             st.divider()
             st.metric("💸 총 예상 비용", f"${total_cost:,.0f}")
-            st.info(f"계산식: {ppl}명 x ${rate} x {hours}시간 x {m_val}배")
-
         elif "팁" in life_menu:
             st.subheader("🍽️ 팁 & 더치페이 계산기")
             c1, c2 = st.columns(2)
@@ -432,14 +400,10 @@ with tabs[3]:
             col_res1, col_res2 = st.columns(2)
             col_res1.metric("총 지불액", f"${total:.2f}")
             col_res2.success(f"🙆‍♂️ 1인당: **${per_person:.2f}**")
-
     else:
-        # [ENGLISH MODE]
-        # 💰 Added 'OT Cost'
         life_menu = st.radio("Menu", ["💱 Exchange Rate", "⏰ Timezone", "💸 Net Salary", "💰 OT Cost", "🍽️ Tip Calc"],
                              horizontal=True)
         st.divider()
-
         if "Exchange" in life_menu:
             st.subheader("💱 USD/KRW Exchange Rate")
             df_rate = get_exchange_rate()
@@ -451,10 +415,8 @@ with tabs[3]:
             else:
                 st.warning("Offline mode.")
                 rate = st.number_input("Manual Rate", 1450.0)
-            c1, c2 = st.columns(2)
-            u_in = c1.number_input("USD ($)", 1000.0)
-            c2.metric("KRW (won)", f"{int(u_in * rate):,}")
-
+            u_in = st.number_input("USD ($)", 1000.0)
+            st.metric("KRW (won)", f"{int(u_in * rate):,}")
         elif "Time" in life_menu:
             st.subheader("🌏 Global Time Converter")
             tz_e = pytz.timezone('US/Eastern');
@@ -474,7 +436,6 @@ with tabs[3]:
                 st.success("✅ Korea Business Hours.")
             else:
                 st.warning("🌙 Korea After work.")
-
         elif "Salary" in life_menu:
             st.subheader("💸 Net Salary Calculator")
             s = st.number_input("Annual Gross Salary ($)", 80000, step=1000)
@@ -484,27 +445,18 @@ with tabs[3]:
             c1, c2 = st.columns(2)
             c1.metric("Est. Tax", f"-${(tax + fica):,.0f}")
             c2.metric("Monthly Net", f"${net / 12:,.0f}")
-
         elif "OT" in life_menu:
-            # 💰 OT Cost Logic (English)
             st.subheader("💰 Overtime Cost Estimator")
-            st.caption("Calculate extra labor cost for overtime work.")
-
             c1, c2 = st.columns(2)
             ppl = c1.number_input("Manpower", 1, 50, 5)
             rate = c2.number_input("Avg Hourly Rate ($)", 25.0, 100.0, 40.0)
-
             c3, c4 = st.columns(2)
             hours = c3.number_input("OT Hours", 1.0, 24.0, 2.0)
             mul = c4.radio("Multiplier", ["1.5x (Regular OT)", "2.0x (Holiday/Sunday)"], horizontal=True)
-
             m_val = 1.5 if "1.5" in mul else 2.0
             total_cost = ppl * rate * hours * m_val
-
             st.divider()
             st.metric("💸 Estimated Cost", f"${total_cost:,.0f}")
-            st.info(f"Formula: {ppl} men x ${rate} x {hours} hrs x {m_val}")
-
         elif "Tip" in life_menu:
             st.subheader("🍽️ Tip & Split")
             c1, c2 = st.columns(2)
@@ -517,10 +469,8 @@ with tabs[3]:
             col_res1.metric("Total", f"${total:.2f}")
             col_res2.success(f"🙆‍♂️ Per Person: **${per_person:.2f}**")
 
-# =================================================
-# TAB 5~9: 공통 기능 (V30 유지)
-# =================================================
-with tabs[4]:  # 치수
+# 5. 치수
+with tabs[4]:
     st.subheader("📏 Unit Conversion" if not is_kor else "📏 치수 변환")
     c1, c2 = st.columns(2)
     mm = c1.number_input("mm ➡️ ft-in", 1000)
@@ -528,12 +478,14 @@ with tabs[4]:  # 치수
     ft = c2.number_input("ft ➡️ mm", 10)
     c2.code(f"{ft * 304.8:.0f} mm")
 
-with tabs[5]:  # 자재
+# 6. 자재
+with tabs[5]:
     st.subheader("🚛 Concrete Volume" if not is_kor else "🚛 콘크리트 물량")
     m3 = st.number_input("m³", 10.0)
     st.metric("yd³", f"{m3 * 1.308:.2f}")
 
-with tabs[6]:  # 호환성
+# 7. 호환성
+with tabs[6]:
     st.subheader("🚦 Compatibility" if not is_kor else "🚦 호환성 판독")
     b = st.selectbox("Bolt/Tool", ["1/2 inch", "M12"])
     if "inch" in b:
@@ -541,12 +493,84 @@ with tabs[6]:  # 호환성
     else:
         st.success("✅ Inch tools maybe ok" if not is_kor else "✅ inch 공구 일부 호환")
 
-with tabs[7]:  # 규격표
+# 8. 규격표
+with tabs[7]:
     st.subheader("📋 Rebar Size" if not is_kor else "📋 철근 규격")
     st.dataframe(pd.DataFrame({"US": ["#4", "#5"], "KR": ["D13", "D16"], "mm": [12.7, 15.9]}), hide_index=True)
 
-with tabs[8]:  # 보고서
+# 9. 보고서
+with tabs[8]:
     st.subheader("📝 Daily Report" if not is_kor else "📝 일일 보고서")
     work = st.text_input("Work" if not is_kor else "작업 내용", "Concrete Pouring")
     if st.button("Create" if not is_kor else "생성"):
         st.code(f"Date: {datetime.now().date()}\nWork: {work}\nStatus: OK")
+
+# =================================================
+# TAB 10: 🛒 추천템 (🔥 링크 4개 적용)
+# =================================================
+with tabs[9]:
+    # ▼▼▼ [수정] PM님이 주신 링크 4개 적용 완료 ▼▼▼
+    link_boot = "https://amzn.to/3YkSN1g"  # Timberland PRO
+    link_glass = "https://amzn.to/3LgnNMS"  # DeWalt Goggles
+    link_laser = "https://amzn.to/4smcR0J"  # Klein Laser (New)
+    link_tool = "https://amzn.to/3YQyn02"  # DeWalt 247pc Tool Set
+
+    if is_kor:
+        st.subheader("🛒 PM's Pick: 현장 국룰 장비")
+        st.caption("OSHA/ANSI 규격 만족 & 아마존 베스트셀러 엄선")
+        st.markdown("---")
+
+        # 1. 안전화
+        c1, c2 = st.columns([1, 2])
+        c1.markdown("🥾 **팀버랜드 PRO 안전화 (방수)**")
+        c2.markdown("미국 현장 스테디셀러. 방수/절연 기능(MaxTRAX). 발이 편한 작업화.")
+        st.link_button("👉 아마존 최저가 보기", link_boot)
+        st.divider()
+
+        # 2. 보안경
+        c1, c2 = st.columns([1, 2])
+        c1.markdown("👓 **디월트 안티포그 고글**")
+        c2.markdown("ANSI Z87.1+ 등급. 김서림 방지 코팅. 배터리 공장 필수템.")
+        st.link_button("👉 아마존 최저가 보기", link_glass)
+        st.divider()
+
+        # 3. 레이저
+        c1, c2 = st.columns([1, 2])
+        c1.markdown("📏 **클라인 툴스 그린 레이저**")
+        c2.markdown("전기/설비 엔지니어용. 녹색 십자선 + 수직 포인트. 자석 마운트 포함.")
+        st.link_button("👉 아마존 최저가 보기", link_laser)
+        st.divider()
+
+        # 4. 공구세트 (디월트)
+        c1, c2 = st.columns([1, 2])
+        c1.markdown("🧰 **디월트 247pcs 메카닉 세트**")
+        c2.markdown("현장/정비 끝판왕. 소켓, 렌치, 육각렌치 등 필요한 건 다 있음. 대용량.")
+        st.link_button("👉 아마존 최저가 보기", link_tool)
+
+    else:
+        st.subheader("🛒 PM's Pick: Essential Gear")
+        st.caption("OSHA/ANSI Compliant & Amazon Best Sellers")
+        st.markdown("---")
+
+        c1, c2 = st.columns([1, 2])
+        c1.markdown("🥾 **Timberland PRO Work Boots**")
+        c2.markdown("Waterproof & Insulated. Direct Attach MaxTRAX. Comfortable all day.")
+        st.link_button("👉 Check Price on Amazon", link_boot)
+        st.divider()
+
+        c1, c2 = st.columns([1, 2])
+        c1.markdown("👓 **DeWalt Anti-Fog Goggle**")
+        c2.markdown("ANSI Z87.1+ Rated. Dual Mold, Clear Lens. Perfect for site safety.")
+        st.link_button("👉 Check Price on Amazon", link_glass)
+        st.divider()
+
+        c1, c2 = st.columns([1, 2])
+        c1.markdown("📏 **Klein Tools Green Laser Level**")
+        c2.markdown("Self-Leveling Cross-Line with Red Plumb Spot. Rechargeable.")
+        st.link_button("👉 Check Price on Amazon", link_laser)
+        st.divider()
+
+        c1, c2 = st.columns([1, 2])
+        c1.markdown("🧰 **DeWalt 247pc Mechanic Tool Set**")
+        c2.markdown("Comprehensive set. Ratchets, Sockets, Hex Keys. Polished Chrome.")
+        st.link_button("👉 Check Price on Amazon", link_tool)
